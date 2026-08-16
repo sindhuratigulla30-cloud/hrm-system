@@ -1,11 +1,11 @@
 ﻿const payrollRoutes = require("./routes/payrollRoutes");
 const express = require("express");
 const dns = require("dns");
-
-dns.setServers(["8.8.8.8", "8.8.4.4"]);
 const mongoose = require("mongoose");
 const cors = require("cors");
 const dotenv = require("dotenv");
+
+dns.setServers(["8.8.8.8", "8.8.4.4"]);
 
 dotenv.config();
 
@@ -15,9 +15,30 @@ const app = express();
 // MIDDLEWARE
 // ============================================================
 
+const allowedOrigins = [
+  "http://localhost:5173",
+  "http://localhost:5174",
+  // Add your Vercel URL here after deployment
+  // "https://your-hrm-system.vercel.app",
+];
+
 app.use(
   cors({
-    origin: "http://localhost:5173",
+    origin: function (origin, callback) {
+      // Allow requests without an origin
+      // such as Postman or server-to-server requests
+      if (!origin) {
+        return callback(null, true);
+      }
+
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      return callback(
+        new Error("Not allowed by CORS")
+      );
+    },
     credentials: true,
   })
 );
@@ -67,12 +88,12 @@ const PORT = process.env.PORT || 5000;
 const startServer = async () => {
   try {
     if (!process.env.MONGO_URI) {
-      console.error("MONGO_URI is missing in .env");
+      console.error("MONGO_URI is missing in environment variables");
       process.exit(1);
     }
 
     if (!process.env.JWT_SECRET) {
-      console.error("JWT_SECRET is missing in .env");
+      console.error("JWT_SECRET is missing in environment variables");
       process.exit(1);
     }
 
@@ -80,8 +101,8 @@ const startServer = async () => {
 
     console.log("MongoDB connected successfully");
 
-    app.listen(PORT, () => {
-      console.log(`HRM server running on http://localhost:${PORT}`);
+    app.listen(PORT, "0.0.0.0", () => {
+      console.log(`HRM server running on port ${PORT}`);
     });
   } catch (error) {
     console.error("MongoDB connection error:", error);
