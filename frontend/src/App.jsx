@@ -27,9 +27,9 @@ import Attendance from "./Attendance/Attendance";
 import Payroll from "./Payroll/Payroll";
 import LeaveRequests from "./LeaveRequests/LeaveRequests";
 
-import "./App.css";
+import { API_URL } from "./config";
 
-const API_URL = "http://localhost:5000";
+import "./App.css";
 
 function App() {
   // ============================================================

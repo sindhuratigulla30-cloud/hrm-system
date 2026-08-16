@@ -13,7 +13,7 @@ import {
 
 import "./Payroll.css";
 
-const API_URL = "http://localhost:5000";
+import { API_URL } from "../config";
 
 const emptyForm = {
   employeeId: "",
