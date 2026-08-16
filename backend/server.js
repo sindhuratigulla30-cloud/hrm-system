@@ -71,16 +71,8 @@ app.use("/api/leave-requests", leaveRequestRoutes);
 // ============================================================
 // TEST ROUTE
 // ============================================================
-
-app.get("/", (req, res) => {
-  res.json({
-    success: true,
-    message: "HRM Backend API is running",
-  });
-});
-
-// ============================================================
-// MONGODB CONNECTION
+// LOCAL DEV SERVER
+// Not used on Vercel — see api/index.js for the serverless entry.
 // ============================================================
 
 const PORT = process.env.PORT || 5000;
@@ -97,7 +89,7 @@ const startServer = async () => {
       process.exit(1);
     }
 
-    await mongoose.connect(process.env.MONGO_URI);
+    await connectDB();
 
     console.log("MongoDB connected successfully");
 

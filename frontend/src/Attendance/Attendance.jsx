@@ -11,6 +11,8 @@ import {
   FaTimes,
 } from "react-icons/fa";
 
+import { API_URL } from "../config";
+
 import "./Attendance.css";
 
 
@@ -89,7 +91,12 @@ function Attendance() {
       setLoadingEmployees(true);
 
       const response = await fetch(
-        `${API_URL}/api/employees`
+        `${API_URL}/api/employees`,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
       );
 
       if (!response.ok) {
