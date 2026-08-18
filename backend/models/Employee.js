@@ -17,8 +17,8 @@ const employeeSchema = new mongoose.Schema(
 
     lastName: {
       type: String,
-      required: true,
       trim: true,
+      default: "",
     },
 
     email: {
@@ -26,11 +26,6 @@ const employeeSchema = new mongoose.Schema(
       required: true,
       unique: true,
       lowercase: true,
-      trim: true,
-    },
-
-    phone: {
-      type: String,
       trim: true,
     },
 
@@ -46,6 +41,12 @@ const employeeSchema = new mongoose.Schema(
       trim: true,
     },
 
+    phone: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+
     salary: {
       type: Number,
       default: 0,
@@ -56,25 +57,21 @@ const employeeSchema = new mongoose.Schema(
       default: Date.now,
     },
 
-    status: {
-      type: String,
-      enum: ["Active", "Inactive"],
-      default: "Active",
-    },
-
     address: {
       type: String,
       trim: true,
+      default: "",
     },
-
-    // ==========================================
-    // AUTHENTICATION
-    // ==========================================
 
     password: {
       type: String,
       required: true,
-      minlength: 6,
+    },
+
+    status: {
+      type: String,
+      enum: ["Active", "Inactive"],
+      default: "Active",
     },
 
     role: {

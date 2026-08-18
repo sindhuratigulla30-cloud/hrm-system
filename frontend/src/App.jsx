@@ -21,15 +21,16 @@ import {
   FaServer,
   FaCode,
   FaBars,
+  FaEye,
+  FaEyeSlash,
 } from "react-icons/fa";
 
 import Attendance from "./Attendance/Attendance";
 import Payroll from "./Payroll/Payroll";
 import LeaveRequests from "./LeaveRequests/LeaveRequests";
 
-import { API_URL } from "./config";
-
 import "./App.css";
+
 
 function App() {
   // ============================================================
@@ -44,10 +45,15 @@ function App() {
     !localStorage.getItem("token")
   );
 
+  const [showEmployeeAuth, setShowEmployeeAuth] =
+  useState(false);
+
   const [loginForm, setLoginForm] = useState({
     email: "",
     password: "",
   });
+
+  const [showPassword, setShowPassword] = useState(false);
 
   // ============================================================
   // EMPLOYEE STATE
@@ -200,6 +206,21 @@ function App() {
     }
   };
 
+    // ============================================================
+  // EMPLOYEE LOGIN
+  // ============================================================
+
+  const handleEmployeeLogin = async (newToken) => {
+    localStorage.setItem("token", newToken);
+
+    setToken(newToken);
+    setShowEmployeeAuth(false);
+    setShowLogin(false);
+
+    await loadEmployees(newToken);
+    await loadDepartments(newToken);
+  };
+  
   // ============================================================
   // LOGOUT
   // ============================================================
@@ -836,14 +857,51 @@ function App() {
               <div className="form-group">
                 <label>Password *</label>
 
-                <input
-                  type="password"
-                  name="password"
-                  value={loginForm.password}
-                  onChange={handleLoginChange}
-                  placeholder="Enter password"
-                  required
-                />
+                <div
+                  className="password-input-wrapper"
+                  style={{ position: "relative", width: "100%" }}
+                >
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    name="password"
+                    value={loginForm.password}
+                    onChange={handleLoginChange}
+                    placeholder="Enter password"
+                    required
+                    style={{ paddingRight: "45px" }}
+                  />
+
+                  <button
+                    type="button"
+                    className="password-toggle-button"
+                    style={{
+                      position: "absolute",
+                      right: "12px",
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      border: "none",
+                      background: "transparent",
+                      cursor: "pointer",
+                      color: "#64748b",
+                      fontSize: "18px",
+                      padding: "4px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                    onClick={() =>
+                      setShowPassword((previous) => !previous)
+                    }
+                    aria-label={
+                      showPassword ? "Hide password" : "Show password"
+                    }
+                    title={
+                      showPassword ? "Hide password" : "Show password"
+                    }
+                  >
+                    {showPassword ? <FaEyeSlash /> : <FaEye />}
+                  </button>
+                </div>
               </div>
 
               <div className="form-actions">
@@ -867,8 +925,56 @@ function App() {
                 </button>
               </div>
             </form>
+
+            <div
+              style={{
+                marginTop: "18px",
+                paddingTop: "18px",
+                borderTop: "1px solid #e5eaf2",
+                textAlign: "center",
+              }}
+            >
+              <p
+                style={{
+                  margin: "0 0 8px",
+                  color: "#64748b",
+                  fontSize: "13px",
+                }}
+              >
+                Are you an employee?
+              </p>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setShowLogin(false);
+                  setShowEmployeeAuth(true);
+                }}
+                style={{
+                  border: "none",
+                  background: "transparent",
+                  color: "#2563eb",
+                  fontSize: "14px",
+                  fontWeight: "700",
+                  cursor: "pointer",
+                }}
+              >
+                Employee Login / Registration
+              </button>
+            </div>
           </div>
         </div>
+      )}
+
+      {showEmployeeAuth && (
+        <Login
+          apiUrl={API_URL}
+          onLoginSuccess={handleEmployeeLogin}
+          onBack={() => {
+            setShowEmployeeAuth(false);
+            setShowLogin(true);
+          }}
+        />
       )}
 
       {/* ======================================================
