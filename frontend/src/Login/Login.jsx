@@ -2,7 +2,7 @@ import { useState } from "react";
 import axios from "axios";
 import { FaEye, FaEyeSlash, FaTimes } from "react-icons/fa";
 
-const API_URL = "http://127.0.0.1:5000";
+const API_URL = import.meta.env.VITE_API_URL;
 
 const Login = ({ onLoginSuccess, onBack }) => {
   const [mode, setMode] = useState("login");
@@ -168,14 +168,15 @@ const Login = ({ onLoginSuccess, onBack }) => {
       }
 
       // Request was sent but no response received
-      else if (error.request) {
-        alert(
-          "Cannot connect to the HRM backend.\n\n" +
-            "Please make sure the backend is running on:\n" +
-            "http://127.0.0.1:5000\n\n" +
-            "Also make sure you restarted the frontend after changing .env."
-        );
-      }
+else if (error.request) {
+  alert(
+    "Cannot connect to the HRM backend.\n\n" +
+      "Please make sure the backend is available at:\n" +
+      API_URL +
+      "\n\n" +
+      "Please check your Vercel deployment and try again."
+  );
+}
 
       // Something else happened
       else {
