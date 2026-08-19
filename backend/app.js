@@ -10,13 +10,21 @@ const app = express();
 // MIDDLEWARE
 // ============================================================
 
-const allowedOrigins = (process.env.FRONTEND_URL || "http://localhost:5173")
-  .split(",")
-  .map((origin) => origin.trim());
+const allowedOrigins = [
+  "https://hrm-frontend-wine.vercel.app",
+  "https://hrm-frontend-git-main-med-nova1.vercel.app",
+  "http://localhost:5173",
+];
 
 app.use(
   cors({
-    origin: allowedOrigins,
+    origin: function (origin, callback) {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
     credentials: true,
   })
 );
