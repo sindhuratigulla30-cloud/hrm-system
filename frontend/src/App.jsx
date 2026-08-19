@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
+import Login from "./Login/Login";
 
 import {
   FaUsers,
@@ -30,7 +31,8 @@ import Payroll from "./Payroll/Payroll";
 import LeaveRequests from "./LeaveRequests/LeaveRequests";
 
 import "./App.css";
-
+const API_URL =
+  import.meta.env.VITE_API_URL || "http://127.0.0.1:5000";
 
 function App() {
   // ============================================================
@@ -125,29 +127,45 @@ function App() {
   // AUTH ERROR HANDLER
   // ============================================================
 
-  const handleAuthError = (error) => {
-    const status = error.response?.status;
+const handleAuthError = (error) => {
+  const status = error.response?.status;
 
-    if (status === 401 || status === 403) {
-      console.warn("Authentication failed.");
+  // 401 = token missing, invalid, or expired
+  if (status === 401) {
+    console.warn("Authentication failed: token is invalid or expired.");
 
-      localStorage.removeItem("token");
+    localStorage.removeItem("token");
 
-      setToken(null);
-      setShowLogin(true);
+    setToken(null);
+    setShowLogin(true);
 
-      setEmployees([]);
-      setDepartments([]);
+    setEmployees([]);
+    setDepartments([]);
 
-      alert(
-        "Your session has expired or authentication failed. Please login again."
-      );
+    alert(
+      "Your session has expired or your authentication token is invalid. Please login again."
+    );
 
-      return true;
-    }
+    return true;
+  }
 
-    return false;
-  };
+  // 403 = authenticated, but user does not have permission
+  if (status === 403) {
+    console.warn(
+      "Authorization failed: user does not have permission.",
+      error.response?.data
+    );
+
+    alert(
+      error.response?.data?.message ||
+        "Access denied. Your account does not have administrator permission."
+    );
+
+    return true;
+  }
+
+  return false;
+};
 
   // ============================================================
   // LOGIN FORM CHANGE
@@ -166,60 +184,166 @@ function App() {
   // LOGIN
   // ============================================================
 
-  const handleLogin = async (event) => {
-    event.preventDefault();
+const handleLogin = async (event) => {
+  event.preventDefault();
 
-    try {
-      const response = await axios.post(
-        `${API_URL}/api/auth/login`,
-        loginForm
-      );
+  console.log("=================================");
+  console.log("ADMIN LOGIN STARTED");
+  console.log("API URL:", API_URL);
+  console.log("Login endpoint:", `${API_URL}/api/auth/login`);
+  console.log("=================================");
 
-      const newToken = response.data?.token;
-
-      if (!newToken) {
-        alert("Login failed: token was not received.");
-        return;
+  try {
+    const response = await axios.post(
+      `${API_URL}/api/auth/login`,
+      {
+        email: loginForm.email.trim(),
+        password: loginForm.password,
+      },
+      {
+        headers: {
+          "Content-Type": "application/json",
+        },
+        timeout: 10000,
       }
+    );
 
-      localStorage.setItem("token", newToken);
+    console.log("Login response:", response.data);
 
-      setToken(newToken);
-      setShowLogin(false);
+    const newToken =
+      response.data?.token ||
+      response.data?.accessToken;
 
-      setLoginForm({
-        email: "",
-        password: "",
-      });
-
-      alert("Login successful.");
-
-      await loadEmployees(newToken);
-      await loadDepartments(newToken);
-    } catch (error) {
-      console.error("Login error:", error);
+    if (!newToken) {
+      console.error(
+        "Login succeeded but no token was returned:",
+        response.data
+      );
 
       alert(
-        error.response?.data?.message ||
-          "Unable to login. Please check your email and password."
+        "Login failed: server did not return an authentication token."
+      );
+
+      return;
+    }
+
+    // ------------------------------------------------------------
+    // CHECK USER ROLE RETURNED BY BACKEND
+    // ------------------------------------------------------------
+
+    const loggedInUser = response.data?.user;
+
+    console.log("Logged-in user:", loggedInUser);
+    console.log("Logged-in user role:", loggedInUser?.role);
+
+    // Admin dashboard requires admin role
+    if (loggedInUser?.role !== "admin") {
+      console.error(
+        "ADMIN LOGIN REJECTED: User role is:",
+        loggedInUser?.role
+      );
+
+      alert(
+        `This account is not an administrator.\n\nCurrent role: ${
+          loggedInUser?.role || "undefined"
+        }\n\nThe administrator account must have role: admin`
+      );
+
+      return;
+    }
+
+    // ------------------------------------------------------------
+    // SAVE TOKEN
+    // ------------------------------------------------------------
+
+    localStorage.setItem("token", newToken);
+
+    setToken(newToken);
+    setShowLogin(false);
+
+    setLoginForm({
+      email: "",
+      password: "",
+    });
+
+    alert("Administrator login successful.");
+
+    // ------------------------------------------------------------
+    // LOAD ADMIN DATA
+    // ------------------------------------------------------------
+
+    await loadEmployees(newToken);
+    await loadDepartments(newToken);
+
+  } catch (error) {
+    console.error("=================================");
+    console.error("ADMIN LOGIN ERROR");
+    console.error("API URL:", API_URL);
+    console.error(
+      "Endpoint:",
+      `${API_URL}/api/auth/login`
+    );
+    console.error("Error:", error);
+    console.error("Response:", error.response);
+    console.error("=================================");
+
+    if (error.response) {
+      const status = error.response.status;
+
+      if (status === 401) {
+        alert(
+          error.response.data?.message ||
+            "Invalid administrator email or password."
+        );
+      } else if (status === 403) {
+        alert(
+          error.response.data?.message ||
+            "Access denied. This account does not have administrator permission."
+        );
+      } else {
+        alert(
+          error.response.data?.message ||
+            `Login failed. Server returned ${status}.`
+        );
+      }
+    } else if (error.request) {
+      alert(
+        "Cannot connect to the HRM backend.\n\n" +
+        "Please make sure the backend is running on:\n" +
+        "http://127.0.0.1:5000"
+      );
+    } else {
+      alert(
+        error.message ||
+          "Unable to login. Please try again."
       );
     }
-  };
+  }
+};
 
     // ============================================================
   // EMPLOYEE LOGIN
   // ============================================================
 
-  const handleEmployeeLogin = async (newToken) => {
+const handleEmployeeLogin = async (newToken) => {
+  try {
     localStorage.setItem("token", newToken);
 
     setToken(newToken);
     setShowEmployeeAuth(false);
     setShowLogin(false);
 
-    await loadEmployees(newToken);
-    await loadDepartments(newToken);
-  };
+    // Employee login should NOT load admin-only data
+    setEmployees([]);
+    setDepartments([]);
+
+    setActivePage("Dashboard");
+
+    console.log("Employee login completed successfully.");
+  } catch (error) {
+    console.error("Employee login setup error:", error);
+  }
+};
   
   // ============================================================
   // LOGOUT
@@ -247,43 +371,66 @@ function App() {
   // LOAD EMPLOYEES
   // ============================================================
 
-  const loadEmployees = async (loginToken = null) => {
-    const currentToken =
-      loginToken || localStorage.getItem("token");
+const loadEmployees = async (loginToken = null) => {
+  const currentToken =
+    loginToken || localStorage.getItem("token");
 
-    if (!currentToken) {
+  if (!currentToken) {
+    setEmployees([]);
+    setLoading(false);
+    return;
+  }
+
+  try {
+    console.log("Loading employees...");
+    console.log("Employee API:", `${API_URL}/api/employees`);
+
+    const response = await axios.get(
+      `${API_URL}/api/employees`,
+      {
+        headers: {
+          Authorization: `Bearer ${currentToken}`,
+        },
+      }
+    );
+
+    console.log(
+      "Employees API response:",
+      response.data
+    );
+
+    const employeeData =
+      response.data?.employees;
+
+    if (Array.isArray(employeeData)) {
+      setEmployees(employeeData);
+    } else if (Array.isArray(response.data)) {
+      setEmployees(response.data);
+    } else {
       setEmployees([]);
-      setLoading(false);
-      return;
     }
 
-    try {
-      const response = await axios.get(
-        `${API_URL}/api/employees`,
-        {
-          headers: {
-            Authorization: `Bearer ${currentToken}`,
-          },
-        }
-      );
+  } catch (error) {
+    console.error(
+      "Employee loading error:",
+      error
+    );
 
-      const employeeData = response.data?.employees;
+    console.error(
+      "Employee API status:",
+      error.response?.status
+    );
 
-      if (Array.isArray(employeeData)) {
-        setEmployees(employeeData);
-      } else if (Array.isArray(response.data)) {
-        setEmployees(response.data);
-      } else {
-        setEmployees([]);
-      }
-    } catch (error) {
-      console.error("Employee loading error:", error);
+    console.error(
+      "Employee API response:",
+      error.response?.data
+    );
 
-      if (!handleAuthError(error)) {
-        setEmployees([]);
-      }
+    if (!handleAuthError(error)) {
+      setEmployees([]);
     }
-  };
+  }
+};
 
   // ============================================================
   // LOAD DEPARTMENTS

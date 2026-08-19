@@ -45,34 +45,10 @@ const connectDB = async () => {
 // MIDDLEWARE
 // ============================================================
 
-const allowedOrigins = [
-  "http://localhost:5173",
-  "http://localhost:5174",
-  "http://localhost:5175",
-  "http://localhost:5176",
-
-  // Add your Vercel frontend URL here after deployment
-  // "https://your-hrm-system.vercel.app",
-];
-
+// Allow frontend requests during local development
 app.use(
   cors({
-    origin: function (origin, callback) {
-      // Allow requests without an origin
-      // such as Postman or server-to-server requests
-      if (!origin) {
-        return callback(null, true);
-      }
-
-      if (allowedOrigins.includes(origin)) {
-        return callback(null, true);
-      }
-
-      return callback(
-        new Error("Not allowed by CORS")
-      );
-    },
-
+    origin: true,
     credentials: true,
   })
 );
@@ -84,34 +60,19 @@ app.use(express.json());
 // ============================================================
 
 // Authentication
-app.use(
-  "/api/auth",
-  authRoutes
-);
+app.use("/api/auth", authRoutes);
 
 // Employees
-app.use(
-  "/api/employees",
-  employeeRoutes
-);
+app.use("/api/employees", employeeRoutes);
 
 // Departments
-app.use(
-  "/api/departments",
-  departmentRoutes
-);
+app.use("/api/departments", departmentRoutes);
 
 // Leave Requests
-app.use(
-  "/api/leave-requests",
-  leaveRequestRoutes
-);
+app.use("/api/leave-requests", leaveRequestRoutes);
 
 // Payroll
-app.use(
-  "/api/payroll",
-  payrollRoutes
-);
+app.use("/api/payroll", payrollRoutes);
 
 // ============================================================
 // TEST ROUTE
@@ -174,15 +135,11 @@ const startServer = async () => {
 
     await connectDB();
 
-    app.listen(
-      PORT,
-      "0.0.0.0",
-      () => {
-        console.log(
-          `HRM server running on http://localhost:${PORT}`
-        );
-      }
-    );
+    app.listen(PORT, "0.0.0.0", () => {
+      console.log(
+        `HRM server running on http://localhost:${PORT}`
+      );
+    });
   } catch (error) {
     console.error(
       "Unable to start HRM server:",
@@ -194,3 +151,4 @@ const startServer = async () => {
 };
 
 startServer();
+

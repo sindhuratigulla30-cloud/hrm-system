@@ -25,3 +25,4 @@ Thumbs.db
 # Editor files
 .vscode/
 .idea/
+backend/setEmployeePassword.js
