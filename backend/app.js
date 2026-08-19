@@ -1,7 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 const dotenv = require("dotenv");
-
+const mongoose = require("mongoose");
 dotenv.config();
 
 const app = express();
@@ -55,6 +55,17 @@ app.get("/", (req, res) => {
   res.json({
     success: true,
     message: "HRM Backend API is running",
+  });
+});
+
+app.get("/api/health", (req, res) => {
+  res.json({
+    success: true,
+    message: "HRM server is healthy",
+    database:
+      mongoose.connection.readyState === 1
+        ? "connected"
+        : "disconnected",
   });
 });
 
