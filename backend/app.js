@@ -11,6 +11,7 @@ const app = express();
 // ============================================================
 
 const allowedOrigins = [
+  "https://hrm-frontend-steel.vercel.app",
   "https://hrm-frontend-wine.vercel.app",
   "https://hrm-frontend-git-main-med-nova1.vercel.app",
   "http://localhost:5173",
