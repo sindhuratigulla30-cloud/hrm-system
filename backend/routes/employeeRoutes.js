@@ -4,12 +4,15 @@ const {
   createEmployee,
   getEmployees,
   getEmployee,
+  getMyEmployee,
   updateEmployee,
   deleteEmployee,
 } = require("../controllers/employeeController");
 
-const protect = require("../middleware/authMiddleware");
-const allowRoles = require("../middleware/roleMiddleware");
+const {
+  protect,
+  allowRoles,
+} = require("../middleware/authMiddleware");
 
 const router = express.Router();
 
@@ -32,6 +35,15 @@ router.get(
   allowRoles("admin"),
   getEmployees
 );
+
+// Get currently logged-in employee
+router.get(
+  "/me",
+  protect,
+  allowRoles("employee"),
+  getMyEmployee
+);
+
 
 // Get a specific employee
 router.get(

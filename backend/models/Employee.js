@@ -25,42 +25,8 @@ const employeeSchema = new mongoose.Schema(
       type: String,
       required: true,
       unique: true,
+      trim: true,
       lowercase: true,
-      trim: true,
-    },
-
-    department: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-
-    position: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-
-    phone: {
-      type: String,
-      trim: true,
-      default: "",
-    },
-
-    salary: {
-      type: Number,
-      default: 0,
-    },
-
-    joiningDate: {
-      type: Date,
-      default: Date.now,
-    },
-
-    address: {
-      type: String,
-      trim: true,
-      default: "",
     },
 
     password: {
@@ -68,15 +34,38 @@ const employeeSchema = new mongoose.Schema(
       required: true,
     },
 
+    department: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    position: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    phone: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    salary: {
+      type: Number,
+      default: 0,
+    },
+
     status: {
       type: String,
-      enum: ["Active", "Inactive"],
-      default: "Active",
+      enum: ["active", "inactive"],
+      default: "active",
     },
 
     role: {
       type: String,
-      enum: ["admin", "employee"],
+      enum: ["employee", "admin"],
       default: "employee",
     },
   },

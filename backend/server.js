@@ -9,6 +9,8 @@ const authRoutes = require("./routes/authRoutes");
 const employeeRoutes = require("./routes/employeeRoutes");
 const departmentRoutes = require("./routes/departmentRoutes");
 const leaveRequestRoutes = require("./routes/leaveRequestRoutes");
+const attendanceRoutes = require("./routes/attendanceRoutes");
+
 
 dns.setServers(["8.8.8.8", "8.8.4.4"]);
 
@@ -73,6 +75,9 @@ app.use("/api/leave-requests", leaveRequestRoutes);
 
 // Payroll
 app.use("/api/payroll", payrollRoutes);
+
+// Attendance
+app.use("/api/attendance", attendanceRoutes);
 
 // ============================================================
 // TEST ROUTE

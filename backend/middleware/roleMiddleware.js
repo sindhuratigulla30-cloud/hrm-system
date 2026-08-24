@@ -1,16 +1,14 @@
-const allowRoles = (...allowedRoles) => {
+const allowRoles = (...roles) => {
   return (req, res, next) => {
     if (!req.user) {
       return res.status(401).json({
-        success: false,
         message: "Authentication required",
       });
     }
 
-    if (!allowedRoles.includes(req.user.role)) {
+    if (!roles.includes(req.user.role)) {
       return res.status(403).json({
-        success: false,
-        message: "Access denied. You do not have permission.",
+        message: "You do not have permission to access this resource",
       });
     }
 
@@ -18,4 +16,40 @@ const allowRoles = (...allowedRoles) => {
   };
 };
 
-module.exports = allowRoles;
+const requireAdmin = (req, res, next) => {
+  if (!req.user) {
+    return res.status(401).json({
+      message: "Authentication required",
+    });
+  }
+
+  if (req.user.role !== "admin") {
+    return res.status(403).json({
+      message: "Admin access required",
+    });
+  }
+
+  next();
+};
+
+const requireEmployee = (req, res, next) => {
+  if (!req.user) {
+    return res.status(401).json({
+      message: "Authentication required",
+    });
+  }
+
+  if (req.user.role !== "employee") {
+    return res.status(403).json({
+      message: "Employee access required",
+    });
+  }
+
+  next();
+};
+
+module.exports = {
+  allowRoles,
+  requireAdmin,
+  requireEmployee,
+};

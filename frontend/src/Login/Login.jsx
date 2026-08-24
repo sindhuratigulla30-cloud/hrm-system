@@ -1,25 +1,34 @@
-import { useState } from "react";
+import React, { useState } from "react";
+import {
+  FaUserTie,
+  FaEye,
+  FaEyeSlash,
+  FaArrowLeft,
+  FaSignInAlt,
+} from "react-icons/fa";
 import axios from "axios";
-import { FaEye, FaEyeSlash, FaTimes } from "react-icons/fa";
 
-const API_URL = import.meta.env.VITE_API_URL;
+import "./Login.css";
 
-const Login = ({ onLoginSuccess, onBack }) => {
-  const [mode, setMode] = useState("login");
-
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-
-  const [loading, setLoading] = useState(false);
-
+function Login({
+  apiUrl,
+  onLoginSuccess,
+  onBack,
+}) {
   const [form, setForm] = useState({
-    firstName: "",
-    lastName: "",
     employeeId: "",
     email: "",
     password: "",
-    confirmPassword: "",
   });
+
+  const [showPassword, setShowPassword] =
+    useState(false);
+
+  const [loading, setLoading] =
+    useState(false);
+
+  const [error, setError] =
+    useState("");
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -28,459 +37,296 @@ const Login = ({ onLoginSuccess, onBack }) => {
       ...previous,
       [name]: value,
     }));
+
+    setError("");
   };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
 
-    // -----------------------------------------
-    // VALIDATE REGISTRATION PASSWORD
-    // -----------------------------------------
-    if (mode === "register") {
-      if (form.password.length < 6) {
-        alert("Password must contain at least 6 characters.");
-        return;
-      }
+    if (
+      !form.employeeId.trim() ||
+      !form.email.trim() ||
+      !form.password
+    ) {
+      setError(
+        "Employee ID, email and password are required."
+      );
 
-      if (form.password !== form.confirmPassword) {
-        alert("Passwords do not match.");
-        return;
-      }
+      return;
     }
 
     setLoading(true);
+    setError("");
 
     try {
-      // =====================================================
-      // EMPLOYEE LOGIN
-      // =====================================================
-      if (mode === "login") {
-        const loginUrl = `${API_URL}/api/auth/login`;
-
-        console.log("------------------------------------");
-        console.log("EMPLOYEE LOGIN");
-        console.log("API URL:", API_URL);
-        console.log("Login endpoint:", loginUrl);
-        console.log("Email:", form.email);
-        console.log("------------------------------------");
-
-        const response = await axios.post(
-          loginUrl,
-          {
-            email: form.email.trim().toLowerCase(),
-            password: form.password,
-          },
-          {
-            headers: {
-              "Content-Type": "application/json",
-            },
-            timeout: 10000,
-          }
-        );
-
-        console.log("Employee login response:", response.data);
-
-        const newToken = response.data?.token;
-
-        if (!newToken) {
-          alert("Login failed: token was not received from the server.");
-          return;
+      console.log(
+        "Employee login request:",
+        {
+          employeeId: form.employeeId,
+          email: form.email,
         }
-
-        localStorage.setItem("token", newToken);
-
-        if (response.data?.user) {
-          localStorage.setItem(
-            "employeeUser",
-            JSON.stringify(response.data.user)
-          );
-        }
-
-        alert("Employee login successful.");
-
-        if (typeof onLoginSuccess === "function") {
-          await onLoginSuccess(newToken);
-        }
-
-        return;
-      }
-
-      // =====================================================
-      // EMPLOYEE REGISTRATION
-      // =====================================================
-      const registerUrl = `${API_URL}/api/auth/register`;
-
-      console.log("------------------------------------");
-      console.log("EMPLOYEE REGISTRATION");
-      console.log("API URL:", API_URL);
-      console.log("Registration endpoint:", registerUrl);
-      console.log("------------------------------------");
+      );
 
       const response = await axios.post(
-        registerUrl,
+        `${apiUrl}/api/auth/employee-login`,
         {
-          name: `${form.firstName} ${form.lastName}`.trim(),
-          firstName: form.firstName.trim(),
-          lastName: form.lastName.trim(),
-          employeeId: form.employeeId.trim(),
-          email: form.email.trim().toLowerCase(),
-          password: form.password,
-          role: "employee",
-        },
-        {
-          headers: {
-            "Content-Type": "application/json",
-          },
-          timeout: 10000,
+          employeeId:
+            form.employeeId.trim(),
+
+          email:
+            form.email
+              .trim()
+              .toLowerCase(),
+
+          password:
+            form.password,
         }
       );
 
-      console.log("Employee registration response:", response.data);
-
-      alert(
-        "Employee registration successful.\n\nPlease use your email and password to login."
+      console.log(
+        "Employee login response:",
+        response.data
       );
 
-      // Switch back to login
-      setMode("login");
+      const token =
+        response.data?.token ||
+        response.data?.data?.token;
 
-      // Keep email so employee doesn't have to type it again
-      setForm((previous) => ({
-        ...previous,
-        password: "",
-        confirmPassword: "",
-      }));
-    } catch (error) {
-      console.error("------------------------------------");
-      console.error("EMPLOYEE AUTHENTICATION ERROR");
-      console.error("Error:", error);
-      console.error("Response:", error.response);
-      console.error("Request:", error.request);
-      console.error("------------------------------------");
+      const user =
+        response.data?.user ||
+        response.data?.employee ||
+        response.data?.data?.user ||
+        response.data?.data?.employee ||
+        null;
 
-      // Server responded with an error
-      if (error.response) {
-        const message =
-          error.response.data?.message ||
-          `Server returned status ${error.response.status}.`;
-
-        alert(message);
-      }
-
-      // Request was sent but no response received
-else if (error.request) {
-  alert(
-    "Cannot connect to the HRM backend.\n\n" +
-      "Please make sure the backend is available at:\n" +
-      API_URL +
-      "\n\n" +
-      "Please check your Vercel deployment and try again."
-  );
-}
-
-      // Something else happened
-      else {
-        alert(
-          error.message ||
-            (mode === "login"
-              ? "Unable to login."
-              : "Unable to register employee.")
+      if (!token) {
+        throw new Error(
+          "Authentication token was not received."
         );
       }
+
+      /*
+       * Send the successful login
+       * back to App.jsx.
+       *
+       * App.jsx will then call:
+       *
+       * GET /api/employees/me
+       *
+       * to load ONLY this employee.
+       */
+
+      onLoginSuccess(
+        token,
+        user
+      );
+    } catch (error) {
+      console.error(
+        "EMPLOYEE LOGIN ERROR:",
+        error
+      );
+
+      console.error(
+        "Server response:",
+        error.response?.data
+      );
+
+      setError(
+        error.response?.data?.message ||
+          "Employee login failed. Please check your Employee ID, email and password."
+      );
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="modal-overlay">
-      <div
-        className="employee-modal login-modal"
-        onClick={(event) => event.stopPropagation()}
-      >
-        {/* =========================================
-            HEADER
-        ========================================= */}
-        <div className="modal-header">
-          <div>
-            <h2>
-              {mode === "login"
-                ? "Employee Login"
-                : "Employee Registration"}
-            </h2>
+    <div className="employee-login-page">
 
-            <p>
-              {mode === "login"
-                ? "Login with your employee account."
-                : "Create your employee account."}
-            </p>
-          </div>
+      <div className="employee-login-card">
 
-          <button
-            type="button"
-            className="modal-close-button"
-            onClick={onBack}
-            aria-label="Back to administrator login"
-          >
-            <FaTimes />
-          </button>
+        {/* TOP GRADIENT LINE */}
+        <div className="employee-login-top-line" />
+
+        {/* ICON */}
+        <div className="employee-login-icon">
+          <FaUserTie />
         </div>
 
-        {/* =========================================
-            FORM
-        ========================================= */}
-        <form className="employee-form" onSubmit={handleSubmit}>
-          {/* =========================================
-              REGISTRATION FIELDS
-          ========================================= */}
-          {mode === "register" && (
-            <>
-              <div className="form-grid">
-                {/* FIRST NAME */}
-                <div className="form-group">
-                  <label>First Name *</label>
+        {/* TITLE */}
+        <h1>
+          Employee Login
+        </h1>
 
-                  <input
-                    type="text"
-                    name="firstName"
-                    value={form.firstName}
-                    onChange={handleChange}
-                    placeholder="Enter first name"
-                    required
-                  />
-                </div>
+        <p className="employee-login-subtitle">
+          Sign in to access your employee portal.
+        </p>
 
-                {/* LAST NAME */}
-                <div className="form-group">
-                  <label>Last Name *</label>
+        {/* FORM */}
+        <form
+          onSubmit={handleSubmit}
+          className="employee-login-form"
+        >
 
-                  <input
-                    type="text"
-                    name="lastName"
-                    value={form.lastName}
-                    onChange={handleChange}
-                    placeholder="Enter last name"
-                    required
-                  />
-                </div>
-              </div>
+          {/* EMPLOYEE ID */}
+          <div className="employee-login-field">
 
-              {/* EMPLOYEE ID */}
-              <div className="form-group">
-                <label>Employee ID *</label>
-
-                <input
-                  type="text"
-                  name="employeeId"
-                  value={form.employeeId}
-                  onChange={handleChange}
-                  placeholder="e.g. EMP001"
-                  required
-                />
-              </div>
-            </>
-          )}
-
-          {/* =========================================
-              EMAIL
-          ========================================= */}
-          <div className="form-group">
-            <label>Email *</label>
+            <label htmlFor="employeeId">
+              Employee ID
+            </label>
 
             <input
+              id="employeeId"
+              type="text"
+              name="employeeId"
+              value={form.employeeId}
+              onChange={handleChange}
+              placeholder="EMP002"
+              autoComplete="username"
+              required
+            />
+
+          </div>
+
+          {/* EMAIL */}
+          <div className="employee-login-field">
+
+            <label htmlFor="employeeEmail">
+              Email
+            </label>
+
+            <input
+              id="employeeEmail"
               type="email"
               name="email"
               value={form.email}
               onChange={handleChange}
               placeholder="employee@example.com"
+              autoComplete="email"
               required
             />
+
           </div>
 
-          {/* =========================================
-              PASSWORD
-          ========================================= */}
-          <div className="form-group">
-            <label>Password *</label>
+          {/* PASSWORD */}
+          <div className="employee-login-field">
 
-            <div
-              style={{
-                position: "relative",
-                width: "100%",
-              }}
-            >
+            <label htmlFor="employeePassword">
+              Password
+            </label>
+
+            <div className="employee-password-wrapper">
+
               <input
-                type={showPassword ? "text" : "password"}
+                id="employeePassword"
+                type={
+                  showPassword
+                    ? "text"
+                    : "password"
+                }
                 name="password"
                 value={form.password}
                 onChange={handleChange}
-                placeholder="Enter password"
+                placeholder="Enter your password"
+                autoComplete="current-password"
                 required
-                minLength={6}
-                style={{
-                  paddingRight: "45px",
-                }}
               />
 
               <button
                 type="button"
+                className="employee-password-toggle"
                 onClick={() =>
-                  setShowPassword((previous) => !previous)
+                  setShowPassword(
+                    (previous) =>
+                      !previous
+                  )
                 }
-                style={{
-                  position: "absolute",
-                  right: "12px",
-                  top: "50%",
-                  transform: "translateY(-50%)",
-                  border: "none",
-                  background: "transparent",
-                  cursor: "pointer",
-                  color: "#64748b",
-                  fontSize: "18px",
-                }}
                 aria-label={
-                  showPassword ? "Hide password" : "Show password"
+                  showPassword
+                    ? "Hide password"
+                    : "Show password"
                 }
               >
-                {showPassword ? <FaEyeSlash /> : <FaEye />}
+                {showPassword ? (
+                  <FaEyeSlash />
+                ) : (
+                  <FaEye />
+                )}
               </button>
+
             </div>
+
           </div>
 
-          {/* =========================================
-              CONFIRM PASSWORD
-          ========================================= */}
-          {mode === "register" && (
-            <div className="form-group">
-              <label>Confirm Password *</label>
-
-              <div
-                style={{
-                  position: "relative",
-                  width: "100%",
-                }}
-              >
-                <input
-                  type={showConfirmPassword ? "text" : "password"}
-                  name="confirmPassword"
-                  value={form.confirmPassword}
-                  onChange={handleChange}
-                  placeholder="Confirm password"
-                  required
-                  minLength={6}
-                  style={{
-                    paddingRight: "45px",
-                  }}
-                />
-
-                <button
-                  type="button"
-                  onClick={() =>
-                    setShowConfirmPassword(
-                      (previous) => !previous
-                    )
-                  }
-                  style={{
-                    position: "absolute",
-                    right: "12px",
-                    top: "50%",
-                    transform: "translateY(-50%)",
-                    border: "none",
-                    background: "transparent",
-                    cursor: "pointer",
-                    color: "#64748b",
-                    fontSize: "18px",
-                  }}
-                  aria-label={
-                    showConfirmPassword
-                      ? "Hide confirm password"
-                      : "Show confirm password"
-                  }
-                >
-                  {showConfirmPassword ? (
-                    <FaEyeSlash />
-                  ) : (
-                    <FaEye />
-                  )}
-                </button>
-              </div>
+          {/* ERROR */}
+          {error && (
+            <div className="employee-login-error">
+              {error}
             </div>
           )}
 
-          {/* =========================================
-              BUTTONS
-          ========================================= */}
-          <div className="form-actions">
-            <button
-              type="button"
-              className="cancel-button"
-              onClick={onBack}
-              disabled={loading}
-            >
-              Back
-            </button>
+          {/* LOGIN BUTTON */}
+          <button
+            type="submit"
+            className="employee-login-button"
+            disabled={loading}
+          >
 
-            <button
-              type="submit"
-              className="save-button"
-              disabled={loading}
-            >
+            <FaSignInAlt />
+
+            <span>
               {loading
-                ? "Please wait..."
-                : mode === "login"
-                ? "Employee Login"
-                : "Register"}
-            </button>
-          </div>
+                ? "Signing in..."
+                : "Login as Employee"}
+            </span>
+
+          </button>
+
         </form>
 
-        {/* =========================================
-            SWITCH LOGIN / REGISTRATION
-        ========================================= */}
-        <div
-  style={{
-    marginTop: "18px",
-    paddingTop: "18px",
-    borderTop: "1px solid #e5eaf2",
-    textAlign: "center",
-  }}
->
-  <p
-    style={{
-      margin: "0 0 12px",
-      color: "#64748b",
-      fontSize: "13px",
-    }}
-  >
-    {mode === "login"
-      ? "Don't have an employee account?"
-      : "Already have an employee account?"}
-  </p>
+        {/* DIVIDER */}
+        <div className="employee-login-divider">
+          <span />
+          <span>OR</span>
+          <span />
+        </div>
 
-  <button
-    type="button"
-    onClick={() =>
-      setMode(mode === "login" ? "register" : "login")
-    }
-    disabled={loading}
-    style={{
-      border: "none",
-      background: "transparent",
-      color: "#2563eb",
-      fontSize: "14px",
-      fontWeight: "700",
-      cursor: loading ? "not-allowed" : "pointer",
-      textDecoration: "underline",
-    }}
-  >
-    {mode === "login"
-      ? "Employee Registration"
-      : "Employee Login"}
-  </button>
-</div>
+        {/* BACK TO ADMIN */}
+        <div className="employee-back-section">
+
+          <p>
+            Are you an administrator?
+          </p>
+
+          <button
+            type="button"
+            className="employee-back-button"
+            onClick={onBack}
+          >
+            <FaArrowLeft />
+
+            <span>
+              Back to Administrator Login
+            </span>
+          </button>
+
+        </div>
+
+        {/* SECURITY MESSAGE */}
+        <div className="employee-security-note">
+          <FaUserTie />
+
+          <span>
+            Employee access is restricted to
+            your own profile and attendance.
+          </span>
+        </div>
+
       </div>
+
     </div>
   );
-};
+}
 
 export default Login;

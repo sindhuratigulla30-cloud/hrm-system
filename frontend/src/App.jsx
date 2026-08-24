@@ -1,6 +1,5 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import axios from "axios";
-import Login from "./Login/Login";
 
 import {
   FaUsers,
@@ -18,52 +17,95 @@ import {
   FaClipboardList,
   FaMoneyBillWave,
   FaCheckCircle,
-  FaDatabase,
   FaServer,
+  FaDatabase,
   FaCode,
   FaBars,
   FaEye,
   FaEyeSlash,
+  FaClock,
+  FaSignInAlt,
+  FaSignOutAlt,
+  FaHistory,
+  FaBriefcase,
+  FaEnvelope,
+  FaPhone,
+  FaMapMarkerAlt,
+  FaSyncAlt,
+  FaCalendarCheck,
+  FaArrowRight,
+  FaChartLine,
+  FaShieldAlt,
 } from "react-icons/fa";
 
+import Login from "./Login/Login";
 import Attendance from "./Attendance/Attendance";
-import Payroll from "./Payroll/Payroll";
 import LeaveRequests from "./LeaveRequests/LeaveRequests";
+import Payroll from "./Payroll/Payroll";
 
 import "./App.css";
+
 const API_URL =
-  import.meta.env.VITE_API_URL || "http://127.0.0.1:5000";
+  import.meta.env.VITE_API_URL || "http://localhost:5000";
 
 function App() {
-  // ============================================================
-  // AUTHENTICATION
-  // ============================================================
+  /* ============================================================
+     AUTH
+  ============================================================ */
 
   const [token, setToken] = useState(
-    localStorage.getItem("token")
+    localStorage.getItem("token") || ""
   );
 
-  const [showLogin, setShowLogin] = useState(
-    !localStorage.getItem("token")
-  );
+  const [user, setUser] = useState(() => {
+    try {
+      return JSON.parse(
+        localStorage.getItem("user") || "null"
+      );
+    } catch {
+      return null;
+    }
+  });
 
   const [showEmployeeAuth, setShowEmployeeAuth] =
-  useState(false);
+    useState(false);
+
+  const normalizedRole = String(user?.role || "")
+    .toLowerCase()
+    .trim();
+
+  const isAdmin = normalizedRole === "admin";
+  const isEmployee = normalizedRole === "employee";
+
+  /* ============================================================
+     ADMIN STATE
+  ============================================================ */
+
+  const [activePage, setActivePage] =
+    useState("Dashboard");
+
+  const [sidebarOpen, setSidebarOpen] =
+    useState(false);
+
+  const [employees, setEmployees] = useState([]);
+  const [departments, setDepartments] = useState([]);
+
+  const [loading, setLoading] = useState(false);
+  const [search, setSearch] = useState("");
 
   const [loginForm, setLoginForm] = useState({
     email: "",
     password: "",
   });
 
-  const [showPassword, setShowPassword] = useState(false);
+  const [showPassword, setShowPassword] =
+    useState(false);
 
-  // ============================================================
-  // EMPLOYEE STATE
-  // ============================================================
+  /* ============================================================
+     EMPLOYEE FORM
+  ============================================================ */
 
-  const [employees, setEmployees] = useState([]);
-
-  const [form, setForm] = useState({
+  const initialEmployeeForm = {
     employeeId: "",
     firstName: "",
     lastName: "",
@@ -72,549 +114,972 @@ function App() {
     department: "",
     position: "",
     salary: "",
-    status: "Active",
+    status: "active",
     address: "",
-  });
+  };
 
-  const [showForm, setShowForm] = useState(false);
-  const [editingId, setEditingId] = useState(null);
+  const [form, setForm] =
+    useState(initialEmployeeForm);
 
-  // ============================================================
-  // DEPARTMENT STATE
-  // ============================================================
-
-  const [departments, setDepartments] = useState([]);
-
-  const [departmentForm, setDepartmentForm] = useState({
-    name: "",
-    description: "",
-    status: "Active",
-  });
-
-  const [showDepartmentForm, setShowDepartmentForm] =
+  const [showForm, setShowForm] =
     useState(false);
 
-  const [editingDepartmentId, setEditingDepartmentId] =
+  const [editingId, setEditingId] =
     useState(null);
 
-  // ============================================================
-  // GENERAL STATE
-  // ============================================================
+  /* ============================================================
+     DEPARTMENT FORM
+  ============================================================ */
 
-  const [search, setSearch] = useState("");
+  const [departmentForm, setDepartmentForm] =
+    useState({
+      name: "",
+      description: "",
+      status: "Active",
+    });
 
-  const [loading, setLoading] = useState(true);
+  const [
+    showDepartmentForm,
+    setShowDepartmentForm,
+  ] = useState(false);
 
-  const [activePage, setActivePage] = useState("Dashboard");
+  const [
+    editingDepartmentId,
+    setEditingDepartmentId,
+  ] = useState(null);
 
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  /* ============================================================
+     EMPLOYEE ATTENDANCE
+  ============================================================ */
 
-  // ============================================================
-  // AUTH CONFIG
-  // ============================================================
+  const [attendanceHistory, setAttendanceHistory] =
+    useState([]);
 
-  const getAuthConfig = () => {
-    const currentToken = localStorage.getItem("token");
+  const [todayAttendance, setTodayAttendance] =
+    useState(null);
+
+  const [attendanceLoading, setAttendanceLoading] =
+    useState(false);
+
+  const [
+    attendanceActionLoading,
+    setAttendanceActionLoading,
+  ] = useState(false);
+
+  /* ============================================================
+     AUTH CONFIG
+  ============================================================ */
+
+  const authConfig = useMemo(() => {
+    if (!token) return {};
 
     return {
       headers: {
-        Authorization: `Bearer ${currentToken}`,
+        Authorization: `Bearer ${token}`,
       },
     };
+  }, [token]);
+
+  /* ============================================================
+     HELPERS
+  ============================================================ */
+
+  const getEmployeeName = (employee) => {
+    const fullName =
+      `${employee?.firstName || ""} ${
+        employee?.lastName || ""
+      }`.trim();
+
+    return (
+      fullName ||
+      employee?.name ||
+      "Employee"
+    );
   };
 
-  // ============================================================
-  // AUTH ERROR HANDLER
-  // ============================================================
+  const getInitials = (employee) => {
+    const first =
+      employee?.firstName?.charAt(0) || "";
 
-const handleAuthError = (error) => {
-  const status = error.response?.status;
+    const last =
+      employee?.lastName?.charAt(0) || "";
 
-  // 401 = token missing, invalid, or expired
-  if (status === 401) {
-    console.warn("Authentication failed: token is invalid or expired.");
-
-    localStorage.removeItem("token");
-
-    setToken(null);
-    setShowLogin(true);
-
-    setEmployees([]);
-    setDepartments([]);
-
-    alert(
-      "Your session has expired or your authentication token is invalid. Please login again."
+    return (
+      `${first}${last}`.toUpperCase() ||
+      "EM"
     );
+  };
 
-    return true;
-  }
+  const formatTime = (value) => {
+    if (!value) return "--";
 
-  // 403 = authenticated, but user does not have permission
-  if (status === 403) {
-    console.warn(
-      "Authorization failed: user does not have permission.",
-      error.response?.data
-    );
+    const date = new Date(value);
 
-    alert(
-      error.response?.data?.message ||
-        "Access denied. Your account does not have administrator permission."
-    );
+    if (Number.isNaN(date.getTime())) {
+      return "--";
+    }
 
-    return true;
-  }
+    return date.toLocaleTimeString("en-IN", {
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    });
+  };
 
-  return false;
-};
+  const formatDate = (value) => {
+    if (!value) return "--";
 
-  // ============================================================
-  // LOGIN FORM CHANGE
-  // ============================================================
+    const date = new Date(value);
+
+    if (Number.isNaN(date.getTime())) {
+      return "--";
+    }
+
+    return date.toLocaleDateString("en-IN", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
+  };
+
+  const decodeTokenPayload = (jwtToken) => {
+    try {
+      if (!jwtToken) return null;
+
+      const parts = jwtToken.split(".");
+
+      if (parts.length !== 3) {
+        return null;
+      }
+
+      const payload = parts[1];
+
+      const decoded = JSON.parse(
+        atob(
+          payload
+            .replace(/-/g, "+")
+            .replace(/_/g, "/")
+        )
+      );
+
+      return decoded;
+    } catch (error) {
+      console.error(
+        "Token decode error:",
+        error
+      );
+
+      return null;
+    }
+  };
+
+  /* ============================================================
+     ADMIN LOGIN
+  ============================================================ */
 
   const handleLoginChange = (event) => {
-    const { name, value } = event.target;
-
-    setLoginForm((previousForm) => ({
-      ...previousForm,
-      [name]: value,
+    setLoginForm((previous) => ({
+      ...previous,
+      [event.target.name]:
+        event.target.value,
     }));
   };
 
-  // ============================================================
-  // LOGIN
-  // ============================================================
-
-const handleLogin = async (event) => {
-  event.preventDefault();
-
-  console.log("=================================");
-  console.log("ADMIN LOGIN STARTED");
-  console.log("API URL:", API_URL);
-  console.log("Login endpoint:", `${API_URL}/api/auth/login`);
-  console.log("=================================");
-
-  try {
-    const response = await axios.post(
-      `${API_URL}/api/auth/login`,
-      {
-        email: loginForm.email.trim(),
-        password: loginForm.password,
-      },
-      {
-        headers: {
-          "Content-Type": "application/json",
-        },
-        timeout: 10000,
-      }
-    );
-
-    console.log("Login response:", response.data);
-
-    const newToken =
-      response.data?.token ||
-      response.data?.accessToken;
-
-    if (!newToken) {
-      console.error(
-        "Login succeeded but no token was returned:",
-        response.data
-      );
-
-      alert(
-        "Login failed: server did not return an authentication token."
-      );
-
-      return;
-    }
-
-    // ------------------------------------------------------------
-    // CHECK USER ROLE RETURNED BY BACKEND
-    // ------------------------------------------------------------
-
-    const loggedInUser = response.data?.user;
-
-    console.log("Logged-in user:", loggedInUser);
-    console.log("Logged-in user role:", loggedInUser?.role);
-
-    // Admin dashboard requires admin role
-    if (loggedInUser?.role !== "admin") {
-      console.error(
-        "ADMIN LOGIN REJECTED: User role is:",
-        loggedInUser?.role
-      );
-
-      alert(
-        `This account is not an administrator.\n\nCurrent role: ${
-          loggedInUser?.role || "undefined"
-        }\n\nThe administrator account must have role: admin`
-      );
-
-      return;
-    }
-
-    // ------------------------------------------------------------
-    // SAVE TOKEN
-    // ------------------------------------------------------------
-
-    localStorage.setItem("token", newToken);
-
-    setToken(newToken);
-    setShowLogin(false);
-
-    setLoginForm({
-      email: "",
-      password: "",
-    });
-
-    alert("Administrator login successful.");
-
-    // ------------------------------------------------------------
-    // LOAD ADMIN DATA
-    // ------------------------------------------------------------
-
-    await loadEmployees(newToken);
-    await loadDepartments(newToken);
-
-  } catch (error) {
-    console.error("=================================");
-    console.error("ADMIN LOGIN ERROR");
-    console.error("API URL:", API_URL);
-    console.error(
-      "Endpoint:",
-      `${API_URL}/api/auth/login`
-    );
-    console.error("Error:", error);
-    console.error("Response:", error.response);
-    console.error("=================================");
-
-    if (error.response) {
-      const status = error.response.status;
-
-      if (status === 401) {
-        alert(
-          error.response.data?.message ||
-            "Invalid administrator email or password."
-        );
-      } else if (status === 403) {
-        alert(
-          error.response.data?.message ||
-            "Access denied. This account does not have administrator permission."
-        );
-      } else {
-        alert(
-          error.response.data?.message ||
-            `Login failed. Server returned ${status}.`
-        );
-      }
-    } else if (error.request) {
-      alert(
-        "Cannot connect to the HRM backend.\n\n" +
-        "Please make sure the backend is running on:\n" +
-        "http://127.0.0.1:5000"
-      );
-    } else {
-      alert(
-        error.message ||
-          "Unable to login. Please try again."
-      );
-    }
-  }
-};
-
-    // ============================================================
-  // EMPLOYEE LOGIN
-  // ============================================================
-
-const handleEmployeeLogin = async (newToken) => {
-  try {
-    localStorage.setItem("token", newToken);
-
-    setToken(newToken);
-    setShowEmployeeAuth(false);
-    setShowLogin(false);
-
-    // Employee login should NOT load admin-only data
-    setEmployees([]);
-    setDepartments([]);
-
-    setActivePage("Dashboard");
-
-    console.log("Employee login completed successfully.");
-  } catch (error) {
-    console.error("Employee login setup error:", error);
-  }
-};
-  
-  // ============================================================
-  // LOGOUT
-  // ============================================================
-
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-
-    setToken(null);
-    setShowLogin(true);
-
-    setEmployees([]);
-    setDepartments([]);
-
-    setActivePage("Dashboard");
-
-    setShowForm(false);
-    setShowDepartmentForm(false);
-
-    resetForm();
-    resetDepartmentForm();
-  };
-
-  // ============================================================
-  // LOAD EMPLOYEES
-  // ============================================================
-
-const loadEmployees = async (loginToken = null) => {
-  const currentToken =
-    loginToken || localStorage.getItem("token");
-
-  if (!currentToken) {
-    setEmployees([]);
-    setLoading(false);
-    return;
-  }
-
-  try {
-    console.log("Loading employees...");
-    console.log("Employee API:", `${API_URL}/api/employees`);
-
-    const response = await axios.get(
-      `${API_URL}/api/employees`,
-      {
-        headers: {
-          Authorization: `Bearer ${currentToken}`,
-        },
-      }
-    );
-
-    console.log(
-      "Employees API response:",
-      response.data
-    );
-
-    const employeeData =
-      response.data?.employees;
-
-    if (Array.isArray(employeeData)) {
-      setEmployees(employeeData);
-    } else if (Array.isArray(response.data)) {
-      setEmployees(response.data);
-    } else {
-      setEmployees([]);
-    }
-
-  } catch (error) {
-    console.error(
-      "Employee loading error:",
-      error
-    );
-
-    console.error(
-      "Employee API status:",
-      error.response?.status
-    );
-
-    console.error(
-      "Employee API response:",
-      error.response?.data
-    );
-
-    if (!handleAuthError(error)) {
-      setEmployees([]);
-    }
-  }
-};
-
-  // ============================================================
-  // LOAD DEPARTMENTS
-  // ============================================================
-
-  const loadDepartments = async (loginToken = null) => {
-    const currentToken =
-      loginToken || localStorage.getItem("token");
-
-    if (!currentToken) {
-      setDepartments([]);
-      return;
-    }
+  const handleLogin = async (event) => {
+    event.preventDefault();
 
     try {
-      const response = await axios.get(
-        `${API_URL}/api/departments`,
+      const response = await axios.post(
+        `${API_URL}/api/auth/login`,
+        loginForm
+      );
+
+      const receivedToken =
+        response.data?.token ||
+        response.data?.data?.token;
+
+      if (!receivedToken) {
+        throw new Error(
+          "Authentication token not received."
+        );
+      }
+
+      const tokenPayload =
+        decodeTokenPayload(receivedToken);
+
+      const receivedUser =
+        response.data?.user ||
+        response.data?.employee ||
+        response.data?.data?.user ||
+        response.data?.data?.employee ||
+        tokenPayload ||
+        {};
+
+      const normalizedUser = {
+        ...receivedUser,
+        role:
+          receivedUser?.role ||
+          tokenPayload?.role ||
+          "admin",
+      };
+
+      const role = String(
+        normalizedUser.role || ""
+      )
+        .toLowerCase()
+        .trim();
+
+      if (role !== "admin") {
+        alert(
+          "This login is not an administrator account."
+        );
+
+        return;
+      }
+
+      localStorage.setItem(
+        "token",
+        receivedToken
+      );
+
+      localStorage.setItem(
+        "user",
+        JSON.stringify(normalizedUser)
+      );
+
+      localStorage.setItem(
+        "adminToken",
+        receivedToken
+      );
+
+      localStorage.setItem(
+        "adminUser",
+        JSON.stringify(normalizedUser)
+      );
+
+      localStorage.removeItem(
+        "employeeToken"
+      );
+
+      localStorage.removeItem(
+        "employeeUser"
+      );
+
+      setToken(receivedToken);
+      setUser(normalizedUser);
+
+      setShowEmployeeAuth(false);
+      setActivePage("Dashboard");
+    } catch (error) {
+      console.error(
+        "Admin login error:",
+        error
+      );
+
+      alert(
+        error.response?.data?.message ||
+          "Login failed. Please check your email and password."
+      );
+    }
+  };
+
+  /* ============================================================
+     EMPLOYEE LOGIN
+  ============================================================ */
+
+  const handleEmployeeLogin = async (
+    receivedToken,
+    receivedUser
+  ) => {
+    try {
+      if (!receivedToken) {
+        alert(
+          "Employee login failed. Authentication token was not received."
+        );
+        return;
+      }
+
+      const tokenPayload =
+        decodeTokenPayload(receivedToken);
+
+      /* ========================================================
+         GET THE LOGGED-IN EMPLOYEE FROM THE BACKEND
+
+         We do not trust an employee ID supplied by the frontend.
+         The backend uses the employee ID stored in the JWT and
+         returns only that employee.
+      ======================================================== */
+
+      const meResponse = await axios.get(
+        `${API_URL}/api/employees/me`,
         {
           headers: {
-            Authorization: `Bearer ${currentToken}`,
+            Authorization: `Bearer ${receivedToken}`,
           },
         }
       );
 
-      const departmentData =
-        response.data?.departments;
+      const backendEmployee =
+        meResponse.data?.employee ||
+        meResponse.data?.user ||
+        meResponse.data?.data ||
+        null;
 
-      if (Array.isArray(departmentData)) {
-        setDepartments(departmentData);
-      } else if (Array.isArray(response.data)) {
-        setDepartments(response.data);
-      } else {
-        setDepartments([]);
+      if (!backendEmployee) {
+        throw new Error(
+          "Logged-in employee information was not received."
+        );
       }
+
+      const employeeUser = {
+        ...backendEmployee,
+        role:
+          backendEmployee?.role ||
+          tokenPayload?.role ||
+          receivedUser?.role ||
+          "employee",
+        employeeId:
+          backendEmployee?.employeeId ||
+          tokenPayload?.employeeId ||
+          receivedUser?.employeeId ||
+          "",
+        email:
+          backendEmployee?.email ||
+          tokenPayload?.email ||
+          receivedUser?.email ||
+          "",
+      };
+
+      const role = String(
+        employeeUser.role || ""
+      )
+        .toLowerCase()
+        .trim();
+
+      if (role !== "employee") {
+        alert(
+          "This account is not registered as an employee."
+        );
+        return;
+      }
+
+      /* ========================================================
+         SAVE ONLY EMPLOYEE SESSION
+      ======================================================== */
+
+      localStorage.removeItem("adminToken");
+      localStorage.removeItem("adminUser");
+
+      localStorage.setItem(
+        "token",
+        receivedToken
+      );
+
+      localStorage.setItem(
+        "user",
+        JSON.stringify(employeeUser)
+      );
+
+      localStorage.setItem(
+        "employeeToken",
+        receivedToken
+      );
+
+      localStorage.setItem(
+        "employeeUser",
+        JSON.stringify(employeeUser)
+      );
+
+      setToken(receivedToken);
+      setUser(employeeUser);
+      setShowEmployeeAuth(false);
+      setActivePage("Dashboard");
+
+      await loadEmployeeAttendance(
+        receivedToken
+      );
+    } catch (error) {
+      console.error(
+        "Employee login processing error:",
+        error
+      );
+
+      alert(
+        error.response?.data?.message ||
+          error.message ||
+          "Employee login failed."
+      );
+    }
+  };
+
+  /* ============================================================
+     LOGOUT
+  ============================================================ */
+
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+
+    localStorage.removeItem(
+      "employeeToken"
+    );
+
+    localStorage.removeItem(
+      "employeeUser"
+    );
+
+    localStorage.removeItem(
+      "adminToken"
+    );
+
+    localStorage.removeItem(
+      "adminUser"
+    );
+
+    setToken("");
+    setUser(null);
+
+    setShowEmployeeAuth(false);
+
+    setEmployees([]);
+    setDepartments([]);
+
+    setAttendanceHistory([]);
+    setTodayAttendance(null);
+
+    setActivePage("Dashboard");
+  };
+
+  /* ============================================================
+     LOAD EMPLOYEES
+  ============================================================ */
+
+  const loadEmployees = async () => {
+    if (!token || !isAdmin) return;
+
+    setLoading(true);
+
+    try {
+      const response = await axios.get(
+        `${API_URL}/api/employees`,
+        authConfig
+      );
+
+      const data =
+        response.data?.employees ||
+        response.data?.data ||
+        response.data ||
+        [];
+
+      setEmployees(
+        Array.isArray(data)
+          ? data
+          : []
+      );
+    } catch (error) {
+      console.error(
+        "Employee loading error:",
+        error
+      );
+
+      if (
+        [401, 403].includes(
+          error.response?.status
+        )
+      ) {
+        console.error(
+          "Admin authorization failed."
+        );
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /* ============================================================
+     LOAD DEPARTMENTS
+  ============================================================ */
+
+  const loadDepartments = async () => {
+    if (!token || !isAdmin) return;
+
+    try {
+      const response = await axios.get(
+        `${API_URL}/api/departments`,
+        authConfig
+      );
+
+      const data =
+        response.data?.departments ||
+        response.data?.data ||
+        response.data ||
+        [];
+
+      setDepartments(
+        Array.isArray(data)
+          ? data
+          : []
+      );
     } catch (error) {
       console.error(
         "Department loading error:",
         error
       );
-
-      if (!handleAuthError(error)) {
-        setDepartments([]);
-      }
     }
   };
 
-  // ============================================================
-  // INITIAL LOAD
-  // ============================================================
+  /* ============================================================
+     LOAD EMPLOYEE ATTENDANCE
+     
+     IMPORTANT:
+     Today's attendance now uses:
+     
+     GET /api/attendance/today
+     
+     with:
+     
+     Authorization: Bearer EMPLOYEE_TOKEN
+     ============================================================ */
 
-  useEffect(() => {
-    const loadData = async () => {
-      const currentToken =
-        localStorage.getItem("token");
-
-      if (!currentToken) {
-        setLoading(false);
-        return;
-      }
-
-      setLoading(true);
-
-      await Promise.all([
-        loadEmployees(currentToken),
-        loadDepartments(currentToken),
-      ]);
-
-      setLoading(false);
-    };
-
-    loadData();
-  }, []);
-
-  // ============================================================
-  // EMPLOYEE FORM
-  // ============================================================
-
-  const resetForm = () => {
-    setForm({
-      employeeId: "",
-      firstName: "",
-      lastName: "",
-      email: "",
-      phone: "",
-      department: "",
-      position: "",
-      salary: "",
-      status: "Active",
-      address: "",
-    });
-
-    setEditingId(null);
-  };
-
-  const openAddForm = () => {
-    if (!token) {
-      setShowLogin(true);
-      return;
-    }
-
-    resetForm();
-    setShowForm(true);
-  };
-
-  const openEditForm = (employee) => {
-    if (!token) {
-      setShowLogin(true);
-      return;
-    }
-
-    setForm({
-      employeeId: employee.employeeId || "",
-      firstName: employee.firstName || "",
-      lastName: employee.lastName || "",
-      email: employee.email || "",
-      phone: employee.phone || "",
-      department: employee.department || "",
-      position: employee.position || "",
-      salary: employee.salary || "",
-      status: employee.status || "Active",
-      address: employee.address || "",
-    });
-
-    setEditingId(employee._id);
-    setShowForm(true);
-  };
-
-  const handleChange = (event) => {
-    const { name, value } = event.target;
-
-    setForm((previousForm) => ({
-      ...previousForm,
-      [name]: value,
-    }));
-  };
-
-  // ============================================================
-  // ADD / UPDATE EMPLOYEE
-  // ============================================================
-
-  const handleSubmit = async (event) => {
-    event.preventDefault();
-
+  const loadEmployeeAttendance = async (
+    suppliedToken = null
+  ) => {
     const currentToken =
-      localStorage.getItem("token");
+      suppliedToken || token;
 
     if (!currentToken) {
-      setShowLogin(true);
-
-      alert(
-        "Please login before adding or updating an employee."
+      console.warn(
+        "No employee token available for attendance."
       );
 
       return;
     }
 
+    setAttendanceLoading(true);
+
     try {
-      const employeeData = {
-        ...form,
-        salary: Number(form.salary) || 0,
-      };
+      /* ========================================================
+         GET TODAY'S ATTENDANCE
+      ======================================================== */
 
-      const authConfig = getAuthConfig();
+      console.log(
+        "Loading today's attendance..."
+      );
 
+      console.log(
+        "Attendance URL:",
+        `${API_URL}/api/attendance/today`
+      );
+
+      const todayResponse =
+        await axios.get(
+          `${API_URL}/api/attendance/today`,
+          {
+            headers: {
+              Authorization:
+                `Bearer ${currentToken}`,
+            },
+          }
+        );
+
+      console.log(
+        "Today's attendance response:",
+        todayResponse.data
+      );
+
+      /*
+       * Support different backend response structures.
+       */
+
+      const todayData =
+        todayResponse.data?.attendance ||
+        todayResponse.data?.record ||
+        todayResponse.data?.data ||
+        todayResponse.data ||
+        null;
+
+      /*
+       * If backend returns an array,
+       * use the first record.
+       */
+
+      const todayRecord =
+        Array.isArray(todayData)
+          ? todayData[0] || null
+          : todayData;
+
+      setTodayAttendance(
+        todayRecord
+      );
+
+      /* ========================================================
+         LOAD ATTENDANCE HISTORY
+      ======================================================== */
+
+      try {
+        console.log(
+          "Loading attendance history..."
+        );
+
+        const historyResponse =
+          await axios.get(
+            `${API_URL}/api/attendance/my`,
+            {
+              headers: {
+                Authorization:
+                  `Bearer ${currentToken}`,
+              },
+            }
+          );
+
+        console.log(
+          "Attendance history response:",
+          historyResponse.data
+        );
+
+        const historyData =
+          historyResponse.data?.attendance ||
+          historyResponse.data?.records ||
+          historyResponse.data?.data ||
+          historyResponse.data ||
+          [];
+
+        const records =
+          Array.isArray(historyData)
+            ? historyData
+            : [];
+
+        setAttendanceHistory(
+          records
+        );
+      } catch (historyError) {
+        console.warn(
+          "Attendance history endpoint could not be loaded:",
+          historyError.response?.status,
+          historyError.response?.data
+        );
+
+        /*
+         * If history endpoint does not exist,
+         * still show today's attendance.
+         */
+
+        setAttendanceHistory(
+          todayRecord
+            ? [todayRecord]
+            : []
+        );
+      }
+    } catch (error) {
+      console.error(
+        "Employee attendance loading error:",
+        error
+      );
+
+      console.error(
+        "Attendance API status:",
+        error.response?.status
+      );
+
+      console.error(
+        "Attendance API response:",
+        error.response?.data
+      );
+
+      setAttendanceHistory([]);
+      setTodayAttendance(null);
+    } finally {
+      setAttendanceLoading(false);
+    }
+  };
+
+  /* ============================================================
+     CHECK IN
+  ============================================================ */
+
+  const handleEmployeeCheckIn =
+    async () => {
+      if (
+        !token ||
+        attendanceActionLoading
+      ) {
+        return;
+      }
+
+      setAttendanceActionLoading(
+        true
+      );
+
+      try {
+        console.log(
+          "Checking in employee..."
+        );
+
+        const response =
+          await axios.post(
+            `${API_URL}/api/attendance/check-in`,
+            {},
+            {
+              headers: {
+                Authorization:
+                  `Bearer ${token}`,
+              },
+            }
+          );
+
+        console.log(
+          "Check-in response:",
+          response.data
+        );
+
+        await loadEmployeeAttendance(
+          token
+        );
+
+        alert(
+          "Attendance checked in successfully."
+        );
+      } catch (error) {
+        console.error(
+          "Check-in error:",
+          error
+        );
+
+        console.error(
+          "Check-in response:",
+          error.response?.data
+        );
+
+        alert(
+          error.response?.data
+            ?.message ||
+            "Unable to check in."
+        );
+      } finally {
+        setAttendanceActionLoading(
+          false
+        );
+      }
+    };
+
+  /* ============================================================
+     CHECK OUT
+  ============================================================ */
+
+  const handleEmployeeCheckOut =
+    async () => {
+      if (
+        !token ||
+        attendanceActionLoading
+      ) {
+        return;
+      }
+
+      setAttendanceActionLoading(
+        true
+      );
+
+      try {
+        console.log(
+          "Checking out employee..."
+        );
+
+        const response =
+          await axios.post(
+            `${API_URL}/api/attendance/check-out`,
+            {},
+            {
+              headers: {
+                Authorization:
+                  `Bearer ${token}`,
+              },
+            }
+          );
+
+        console.log(
+          "Check-out response:",
+          response.data
+        );
+
+        await loadEmployeeAttendance(
+          token
+        );
+
+        alert(
+          "Attendance checked out successfully."
+        );
+      } catch (error) {
+        console.error(
+          "Check-out error:",
+          error
+        );
+
+        console.error(
+          "Check-out response:",
+          error.response?.data
+        );
+
+        alert(
+          error.response?.data
+            ?.message ||
+            "Unable to check out."
+        );
+      } finally {
+        setAttendanceActionLoading(
+          false
+        );
+      }
+    };
+
+  /* ============================================================
+     ATTENDANCE CALCULATIONS
+  ============================================================ */
+
+  const hasCheckedIn = Boolean(
+    todayAttendance?.loginTime
+  );
+
+  const hasCheckedOut = Boolean(
+    todayAttendance?.logoutTime
+  );
+
+  const getWorkingHours = () => {
+    if (!todayAttendance) {
+      return "0.00 hrs";
+    }
+
+    if (
+      todayAttendance.workingHours !==
+        undefined &&
+      todayAttendance.workingHours !==
+        null
+    ) {
+      return `${Number(
+        todayAttendance.workingHours
+      ).toFixed(2)} hrs`;
+    }
+
+    if (
+      todayAttendance.loginTime &&
+      !todayAttendance.logoutTime
+    ) {
+      const start =
+        new Date(
+          todayAttendance.loginTime
+        ).getTime();
+
+      const hours =
+        Math.max(
+          0,
+          Date.now() - start
+        ) /
+        (1000 * 60 * 60);
+
+      return `${hours.toFixed(2)} hrs`;
+    }
+
+    return "0.00 hrs";
+  };
+
+  const attendanceStatus =
+    todayAttendance?.status ||
+    (hasCheckedOut
+      ? "Present"
+      : hasCheckedIn
+      ? "In Progress"
+      : "Not Marked");
+
+  /* ============================================================
+     EMPLOYEE CRUD
+  ============================================================ */
+
+  const handleChange = (event) => {
+    setForm((previous) => ({
+      ...previous,
+      [event.target.name]:
+        event.target.value,
+    }));
+  };
+
+  const resetForm = () => {
+    setForm(initialEmployeeForm);
+    setEditingId(null);
+  };
+
+  const openAddForm = () => {
+    resetForm();
+    setShowForm(true);
+  };
+
+  const openEditForm = (
+    employee
+  ) => {
+    setEditingId(employee._id);
+
+    setForm({
+      employeeId:
+        employee.employeeId || "",
+
+      firstName:
+        employee.firstName || "",
+
+      lastName:
+        employee.lastName || "",
+
+      email:
+        employee.email || "",
+
+      phone:
+        employee.phone || "",
+
+      department:
+        employee.department || "",
+
+      position:
+        employee.position || "",
+
+      salary:
+        employee.salary || "",
+
+      status:
+        employee.status || "Active",
+
+      address:
+        employee.address || "",
+    });
+
+    setShowForm(true);
+  };
+
+  const handleSubmit = async (
+    event
+  ) => {
+    event.preventDefault();
+
+    try {
       if (editingId) {
         await axios.put(
           `${API_URL}/api/employees/${editingId}`,
-          employeeData,
+          form,
           authConfig
         );
 
-        alert("Employee updated successfully.");
+        alert(
+          "Employee updated successfully."
+        );
       } else {
         await axios.post(
           `${API_URL}/api/employees`,
-          employeeData,
+          form,
           authConfig
         );
 
-        alert("Employee added successfully.");
+        alert(
+          "Employee created successfully."
+        );
       }
 
       setShowForm(false);
-
       resetForm();
 
       await loadEmployees();
@@ -625,10 +1090,6 @@ const loadEmployees = async (loginToken = null) => {
         error
       );
 
-      if (handleAuthError(error)) {
-        return;
-      }
-
       alert(
         error.response?.data?.message ||
           "Unable to save employee."
@@ -636,497 +1097,415 @@ const loadEmployees = async (loginToken = null) => {
     }
   };
 
-  // ============================================================
-  // DELETE EMPLOYEE
-  // ============================================================
-
-  const deleteEmployee = async (id) => {
-    const confirmed = window.confirm(
-      "Are you sure you want to delete this employee?"
-    );
-
-    if (!confirmed) {
-      return;
-    }
-
-    if (!localStorage.getItem("token")) {
-      setShowLogin(true);
-      return;
-    }
-
-    try {
-      await axios.delete(
-        `${API_URL}/api/employees/${id}`,
-        getAuthConfig()
-      );
-
-      await loadEmployees();
-      await loadDepartments();
-
-      alert("Employee deleted successfully.");
-    } catch (error) {
-      console.error(
-        "Employee delete error:",
-        error
-      );
-
-      if (handleAuthError(error)) {
+  const deleteEmployee =
+    async (id) => {
+      if (
+        !window.confirm(
+          "Are you sure you want to delete this employee?"
+        )
+      ) {
         return;
       }
 
-      alert(
-        error.response?.data?.message ||
-          "Unable to delete employee."
-      );
-    }
-  };
-
-  // ============================================================
-  // DEPARTMENT FORM
-  // ============================================================
-
-  const resetDepartmentForm = () => {
-    setDepartmentForm({
-      name: "",
-      description: "",
-      status: "Active",
-    });
-
-    setEditingDepartmentId(null);
-  };
-
-  const openAddDepartmentForm = () => {
-    if (!token) {
-      setShowLogin(true);
-      return;
-    }
-
-    resetDepartmentForm();
-    setShowDepartmentForm(true);
-  };
-
-  const openEditDepartmentForm = (department) => {
-    if (!token) {
-      setShowLogin(true);
-      return;
-    }
-
-    setDepartmentForm({
-      name: department.name || "",
-      description: department.description || "",
-      status: department.status || "Active",
-    });
-
-    setEditingDepartmentId(department._id);
-
-    setShowDepartmentForm(true);
-  };
-
-  const handleDepartmentChange = (event) => {
-    const { name, value } = event.target;
-
-    setDepartmentForm((previousForm) => ({
-      ...previousForm,
-      [name]: value,
-    }));
-  };
-
-  // ============================================================
-  // ADD / UPDATE DEPARTMENT
-  // ============================================================
-
-  const handleDepartmentSubmit = async (event) => {
-    event.preventDefault();
-
-    const currentToken =
-      localStorage.getItem("token");
-
-    if (!currentToken) {
-      setShowLogin(true);
-
-      alert("Please login first.");
-
-      return;
-    }
-
-    try {
-      const config = {
-        headers: {
-          Authorization: `Bearer ${currentToken}`,
-        },
-      };
-
-      if (editingDepartmentId) {
-        await axios.put(
-          `${API_URL}/api/departments/${editingDepartmentId}`,
-          departmentForm,
-          config
+      try {
+        await axios.delete(
+          `${API_URL}/api/employees/${id}`,
+          authConfig
         );
 
-        alert("Department updated successfully.");
-      } else {
-        await axios.post(
-          `${API_URL}/api/departments`,
-          departmentForm,
-          config
+        await loadEmployees();
+
+        alert(
+          "Employee deleted successfully."
+        );
+      } catch (error) {
+        console.error(
+          "Delete employee error:",
+          error
         );
 
-        alert("Department added successfully.");
+        alert(
+          error.response?.data?.message ||
+            "Unable to delete employee."
+        );
       }
+    };
 
-      setShowDepartmentForm(false);
+  /* ============================================================
+     DEPARTMENT CRUD
+  ============================================================ */
 
+  const handleDepartmentChange =
+    (event) => {
+      setDepartmentForm(
+        (previous) => ({
+          ...previous,
+          [event.target.name]:
+            event.target.value,
+        })
+      );
+    };
+
+  const resetDepartmentForm =
+    () => {
+      setDepartmentForm({
+        name: "",
+        description: "",
+        status: "active",
+      });
+
+      setEditingDepartmentId(
+        null
+      );
+    };
+
+  const openAddDepartmentForm =
+    () => {
       resetDepartmentForm();
+      setShowDepartmentForm(true);
+    };
 
-      await loadDepartments();
-      await loadEmployees();
-    } catch (error) {
-      console.error(
-        "Department save error:",
-        error
+  const openEditDepartmentForm =
+    (department) => {
+      setEditingDepartmentId(
+        department._id
       );
 
-      if (handleAuthError(error)) {
+      setDepartmentForm({
+        name:
+          department.name || "",
+
+        description:
+          department.description ||
+          "",
+
+        status:
+          department.status ||
+          "Active",
+      });
+
+      setShowDepartmentForm(
+        true
+      );
+    };
+
+  const handleDepartmentSubmit =
+    async (event) => {
+      event.preventDefault();
+
+      try {
+        if (
+          editingDepartmentId
+        ) {
+          await axios.put(
+            `${API_URL}/api/departments/${editingDepartmentId}`,
+            departmentForm,
+            authConfig
+          );
+
+          alert(
+            "Department updated successfully."
+          );
+        } else {
+          await axios.post(
+            `${API_URL}/api/departments`,
+            departmentForm,
+            authConfig
+          );
+
+          alert(
+            "Department created successfully."
+          );
+        }
+
+        setShowDepartmentForm(
+          false
+        );
+
+        resetDepartmentForm();
+
+        await loadDepartments();
+        await loadEmployees();
+      } catch (error) {
+        console.error(
+          "Department save error:",
+          error
+        );
+
+        alert(
+          error.response?.data
+            ?.message ||
+            "Unable to save department."
+        );
+      }
+    };
+
+  const deleteDepartment =
+    async (id) => {
+      if (
+        !window.confirm(
+          "Are you sure you want to delete this department?"
+        )
+      ) {
         return;
       }
 
-      alert(
-        error.response?.data?.message ||
-          "Unable to save department."
-      );
-    }
+      try {
+        await axios.delete(
+          `${API_URL}/api/departments/${id}`,
+          authConfig
+        );
+
+        await loadDepartments();
+
+        alert(
+          "Department deleted successfully."
+        );
+      } catch (error) {
+        console.error(
+          "Delete department error:",
+          error
+        );
+
+        alert(
+          error.response?.data?.message ||
+            "Unable to delete department."
+        );
+      }
+    };
+
+  /* ============================================================
+     PAGE
+  ============================================================ */
+
+  const changePage = (
+    page
+  ) => {
+    setActivePage(page);
+    setSidebarOpen(false);
   };
 
-  // ============================================================
-  // DELETE DEPARTMENT
-  // ============================================================
+  /* ============================================================
+     LOAD AFTER LOGIN
+  ============================================================ */
 
-  const deleteDepartment = async (id) => {
-    const confirmed = window.confirm(
-      "Are you sure you want to delete this department?"
+  useEffect(() => {
+    if (!token) return;
+
+    if (isAdmin) {
+      loadEmployees();
+      loadDepartments();
+    }
+
+    if (isEmployee) {
+      loadEmployeeAttendance(token);
+    }
+  }, [
+    token,
+    isAdmin,
+    isEmployee,
+  ]);
+
+  /* ============================================================
+     SEARCH
+  ============================================================ */
+
+  const filteredEmployees =
+    employees.filter(
+      (employee) => {
+        const query =
+          search
+            .toLowerCase()
+            .trim();
+
+        if (!query) {
+          return true;
+        }
+
+        return (
+          getEmployeeName(
+            employee
+          )
+            .toLowerCase()
+            .includes(query) ||
+
+          String(
+            employee.employeeId ||
+              ""
+          )
+            .toLowerCase()
+            .includes(query) ||
+
+          String(
+            employee.email || ""
+          )
+            .toLowerCase()
+            .includes(query) ||
+
+          String(
+            employee.department ||
+              ""
+          )
+            .toLowerCase()
+            .includes(query) ||
+
+          String(
+            employee.position ||
+              ""
+          )
+            .toLowerCase()
+            .includes(query)
+        );
+      }
     );
 
-    if (!confirmed) {
-      return;
-    }
+  /* ============================================================
+     ADMIN STATS
+  ============================================================ */
 
-    const currentToken =
-      localStorage.getItem("token");
+  const totalEmployees =
+    employees.length;
 
-    if (!currentToken) {
-      setShowLogin(true);
+  const activeEmployees =
+    employees.filter(
+      (employee) =>
+        String(
+          employee.status || ""
+        )
+          .toLowerCase() ===
+        "active"
+    ).length;
 
-      alert("Please login first.");
+  const inactiveEmployees =
+    totalEmployees -
+    activeEmployees;
 
-      return;
-    }
+  const departmentCount =
+    departments.length;
 
-    try {
-      await axios.delete(
-        `${API_URL}/api/departments/${id}`,
-        {
-          headers: {
-            Authorization: `Bearer ${currentToken}`,
-          },
-        }
-      );
+  /* ============================================================
+     EMPLOYEE DASHBOARD
+  ============================================================ */
 
-      await loadDepartments();
-      await loadEmployees();
-
-      alert("Department deleted successfully.");
-    } catch (error) {
-      console.error(
-        "Department delete error:",
-        error
-      );
-
-      if (handleAuthError(error)) {
-        return;
-      }
-
-      alert(
-        error.response?.data?.message ||
-          "Unable to delete department."
-      );
-    }
-  };
-
-  // ============================================================
-  // NAVIGATION
-  // ============================================================
-
-  const changePage = (page) => {
-    setActivePage(page);
-
-    setSidebarOpen(false);
-
-    setSearch("");
-  };
-
-  // ============================================================
-  // SEARCH
-  // ============================================================
-
-  const filteredEmployees = employees.filter(
-    (employee) => {
-      const searchText = `
-        ${employee.firstName || ""}
-        ${employee.lastName || ""}
-        ${employee.employeeId || ""}
-        ${employee.email || ""}
-        ${employee.department || ""}
-        ${employee.position || ""}
-        ${employee.phone || ""}
-      `.toLowerCase();
-
-      return searchText.includes(
-        search.toLowerCase()
-      );
-    }
-  );
-
-  // ============================================================
-  // DASHBOARD STATISTICS
-  // ============================================================
-
-  const totalEmployees = employees.length;
-
-  const activeEmployees = employees.filter(
-    (employee) =>
-      String(employee.status).toLowerCase() ===
-      "active"
-  ).length;
-
-  const inactiveEmployees = employees.filter(
-    (employee) =>
-      String(employee.status).toLowerCase() ===
-      "inactive"
-  ).length;
-
-  const departmentNames = employees
-    .map((employee) => employee.department)
-    .filter(Boolean);
-
-  const departmentCount = new Set(
-    departmentNames
-  ).size;
-
-  // ============================================================
-  // EMPLOYEE NAME
-  // ============================================================
-
-  const getEmployeeName = (employee) => {
-    const firstName = employee.firstName || "";
-    const lastName = employee.lastName || "";
+  if (isEmployee && token) {
+    const employeeName =
+      getEmployeeName(user);
 
     return (
-      `${firstName} ${lastName}`.trim() ||
-      "Unnamed Employee"
+      <EmployeeDashboard
+        user={user}
+        employeeName={employeeName}
+        token={token}
+        attendanceHistory={
+          attendanceHistory
+        }
+        todayAttendance={
+          todayAttendance
+        }
+        attendanceLoading={
+          attendanceLoading
+        }
+        attendanceActionLoading={
+          attendanceActionLoading
+        }
+        hasCheckedIn={
+          hasCheckedIn
+        }
+        hasCheckedOut={
+          hasCheckedOut
+        }
+        attendanceStatus={
+          attendanceStatus
+        }
+        getWorkingHours={
+          getWorkingHours
+        }
+        formatTime={
+          formatTime
+        }
+        formatDate={
+          formatDate
+        }
+        getInitials={
+          getInitials
+        }
+        handleEmployeeCheckIn={
+          handleEmployeeCheckIn
+        }
+        handleEmployeeCheckOut={
+          handleEmployeeCheckOut
+        }
+        loadEmployeeAttendance={
+          loadEmployeeAttendance
+        }
+        handleLogout={
+          handleLogout
+        }
+      />
     );
-  };
+  }
 
-  // ============================================================
-  // EMPLOYEE INITIALS
-  // ============================================================
+  /* ============================================================
+     EMPLOYEE LOGIN
+  ============================================================ */
 
-  const getInitials = (employee) => {
-    const first =
-      employee.firstName?.charAt(0) || "";
+  if (
+    !token &&
+    showEmployeeAuth
+  ) {
+    return (
+      <Login
+        apiUrl={API_URL}
+        onLoginSuccess={
+          handleEmployeeLogin
+        }
+        onBack={() => {
+          setShowEmployeeAuth(
+            false
+          );
+        }}
+      />
+    );
+  }
 
-    const last =
-      employee.lastName?.charAt(0) || "";
+  /* ============================================================
+     ADMIN LOGIN
+  ============================================================ */
 
-    const initials =
-      `${first}${last}`.toUpperCase();
+  if (
+    !token ||
+    !isAdmin
+  ) {
+    return (
+      <AdminLogin
+        loginForm={loginForm}
+        showPassword={
+          showPassword
+        }
+        handleLoginChange={
+          handleLoginChange
+        }
+        handleLogin={
+          handleLogin
+        }
+        setShowPassword={
+          setShowPassword
+        }
+        onEmployeeLogin={() => {
+          setShowEmployeeAuth(
+            true
+          );
+        }}
+      />
+    );
+  }
 
-    return initials || "EM";
-  };
-
-  // ============================================================
-  // RENDER
-  // ============================================================
+  /* ============================================================
+     ADMIN APPLICATION
+  ============================================================ */
 
   return (
     <div className="app">
-
-      {/* ======================================================
-          LOGIN MODAL
-      ====================================================== */}
-
-      {showLogin && (
-        <div className="modal-overlay">
-          <div
-            className="employee-modal login-modal"
-            onClick={(event) =>
-              event.stopPropagation()
-            }
-          >
-            <div className="modal-header">
-              <div>
-                <h2>Administrator Login</h2>
-
-                <p>
-                  Login to manage employees and HR data.
-                </p>
-              </div>
-
-              {token && (
-                <button
-                  type="button"
-                  className="modal-close-button"
-                  onClick={() =>
-                    setShowLogin(false)
-                  }
-                >
-                  <FaTimes />
-                </button>
-              )}
-            </div>
-
-            <form
-              className="employee-form"
-              onSubmit={handleLogin}
-            >
-              <div className="form-group">
-                <label>Email *</label>
-
-                <input
-                  type="email"
-                  name="email"
-                  value={loginForm.email}
-                  onChange={handleLoginChange}
-                  placeholder="admin@example.com"
-                  required
-                />
-              </div>
-
-              <div className="form-group">
-                <label>Password *</label>
-
-                <div
-                  className="password-input-wrapper"
-                  style={{ position: "relative", width: "100%" }}
-                >
-                  <input
-                    type={showPassword ? "text" : "password"}
-                    name="password"
-                    value={loginForm.password}
-                    onChange={handleLoginChange}
-                    placeholder="Enter password"
-                    required
-                    style={{ paddingRight: "45px" }}
-                  />
-
-                  <button
-                    type="button"
-                    className="password-toggle-button"
-                    style={{
-                      position: "absolute",
-                      right: "12px",
-                      top: "50%",
-                      transform: "translateY(-50%)",
-                      border: "none",
-                      background: "transparent",
-                      cursor: "pointer",
-                      color: "#64748b",
-                      fontSize: "18px",
-                      padding: "4px",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
-                    onClick={() =>
-                      setShowPassword((previous) => !previous)
-                    }
-                    aria-label={
-                      showPassword ? "Hide password" : "Show password"
-                    }
-                    title={
-                      showPassword ? "Hide password" : "Show password"
-                    }
-                  >
-                    {showPassword ? <FaEyeSlash /> : <FaEye />}
-                  </button>
-                </div>
-              </div>
-
-              <div className="form-actions">
-                {token && (
-                  <button
-                    type="button"
-                    className="cancel-button"
-                    onClick={() =>
-                      setShowLogin(false)
-                    }
-                  >
-                    Cancel
-                  </button>
-                )}
-
-                <button
-                  type="submit"
-                  className="save-button"
-                >
-                  Login
-                </button>
-              </div>
-            </form>
-
-            <div
-              style={{
-                marginTop: "18px",
-                paddingTop: "18px",
-                borderTop: "1px solid #e5eaf2",
-                textAlign: "center",
-              }}
-            >
-              <p
-                style={{
-                  margin: "0 0 8px",
-                  color: "#64748b",
-                  fontSize: "13px",
-                }}
-              >
-                Are you an employee?
-              </p>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setShowLogin(false);
-                  setShowEmployeeAuth(true);
-                }}
-                style={{
-                  border: "none",
-                  background: "transparent",
-                  color: "#2563eb",
-                  fontSize: "14px",
-                  fontWeight: "700",
-                  cursor: "pointer",
-                }}
-              >
-                Employee Login / Registration
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showEmployeeAuth && (
-        <Login
-          apiUrl={API_URL}
-          onLoginSuccess={handleEmployeeLogin}
-          onBack={() => {
-            setShowEmployeeAuth(false);
-            setShowLogin(true);
-          }}
-        />
-      )}
-
-      {/* ======================================================
-          MOBILE OVERLAY
-      ====================================================== */}
 
       {sidebarOpen && (
         <div
@@ -1137,136 +1516,96 @@ const loadEmployees = async (loginToken = null) => {
         />
       )}
 
-      {/* ======================================================
-          SIDEBAR
-      ====================================================== */}
-
       <aside
         className={`sidebar ${
-          sidebarOpen ? "sidebar-open" : ""
+          sidebarOpen
+            ? "sidebar-open"
+            : ""
         }`}
       >
+
         <div className="brand">
+
           <div className="brand-icon">
             <FaUserTie />
           </div>
 
           <div className="brand-text">
-            <h2>HR Management</h2>
+            <h2>
+              HR Management
+            </h2>
 
             <span>
               Organization Dashboard
             </span>
           </div>
+
         </div>
 
         <div className="online-status">
-          <span className="online-dot"></span>
-
+          <span className="online-dot" />
           <span>
             System Online
           </span>
         </div>
 
         <nav className="sidebar-nav">
+
           <div className="nav-section-title">
             MAIN MENU
           </div>
 
-          <button
-            type="button"
-            className={`nav-item ${
-              activePage === "Dashboard"
-                ? "active"
-                : ""
-            }`}
-            onClick={() =>
-              changePage("Dashboard")
-            }
-          >
-            <FaTachometerAlt />
-            <span>Dashboard</span>
-          </button>
+          {[
+            [
+              "Dashboard",
+              FaTachometerAlt,
+            ],
+            [
+              "Employees",
+              FaUsers,
+            ],
+            [
+              "Departments",
+              FaBuilding,
+            ],
+            [
+              "Attendance",
+              FaCalendarAlt,
+            ],
+            [
+              "Leave Requests",
+              FaClipboardList,
+            ],
+            [
+              "Payroll",
+              FaMoneyBillWave,
+            ],
+          ].map(
+            ([page, Icon]) => (
+              <button
+                key={page}
+                type="button"
+                className={`nav-item ${
+                  activePage === page
+                    ? "active"
+                    : ""
+                }`}
+                onClick={() =>
+                  changePage(page)
+                }
+              >
+                <Icon />
+                <span>
+                  {page}
+                </span>
+              </button>
+            )
+          )}
 
-          <button
-            type="button"
-            className={`nav-item ${
-              activePage === "Employees"
-                ? "active"
-                : ""
-            }`}
-            onClick={() =>
-              changePage("Employees")
-            }
-          >
-            <FaUsers />
-            <span>Employees</span>
-          </button>
-
-          <button
-            type="button"
-            className={`nav-item ${
-              activePage === "Departments"
-                ? "active"
-                : ""
-            }`}
-            onClick={() =>
-              changePage("Departments")
-            }
-          >
-            <FaBuilding />
-            <span>Departments</span>
-          </button>
-
-          <button
-            type="button"
-            className={`nav-item ${
-              activePage === "Attendance"
-                ? "active"
-                : ""
-            }`}
-            onClick={() =>
-              changePage("Attendance")
-            }
-          >
-            <FaCalendarAlt />
-            <span>Attendance</span>
-          </button>
-
-          <button
-            type="button"
-            className={`nav-item ${
-              activePage === "Leave Requests"
-                ? "active"
-                : ""
-            }`}
-            onClick={() =>
-              changePage("Leave Requests")
-            }
-          >
-            <FaClipboardList />
-            <span>Leave Requests</span>
-          </button>
-
-          <button
-            type="button"
-            className={`nav-item ${
-              activePage === "Payroll"
-                ? "active"
-                : ""
-            }`}
-            onClick={() =>
-              changePage("Payroll")
-            }
-          >
-            <FaMoneyBillWave />
-            <span>Payroll</span>
-          </button>
         </nav>
 
-        {/* SIDEBAR USER */}
-
         <div className="sidebar-user">
+
           <div className="sidebar-user-avatar">
             HR
           </div>
@@ -1281,39 +1620,31 @@ const loadEmployees = async (loginToken = null) => {
             </span>
           </div>
 
-          {token && (
-            <button
-              type="button"
-              onClick={handleLogout}
-              style={{
-                marginLeft: "auto",
-                border: "none",
-                background: "transparent",
-                cursor: "pointer",
-                color: "#dc2626",
-                fontWeight: "600",
-              }}
-            >
-              Logout
-            </button>
-          )}
-        </div>
-      </aside>
+          <button
+            type="button"
+            onClick={
+              handleLogout
+            }
+            className="sidebar-logout"
+          >
+            Logout
+          </button>
 
-      {/* ======================================================
-          MAIN CONTENT
-      ====================================================== */}
+        </div>
+
+      </aside>
 
       <main className="main-content">
 
-        {/* MOBILE TOPBAR */}
-
         <div className="mobile-topbar">
+
           <button
             type="button"
             className="mobile-menu-button"
             onClick={() =>
-              setSidebarOpen(true)
+              setSidebarOpen(
+                true
+              )
             }
           >
             <FaBars />
@@ -1322,147 +1653,109 @@ const loadEmployees = async (loginToken = null) => {
           <strong>
             HR Management
           </strong>
+
         </div>
 
-        {/* ====================================================
-            ATTENDANCE / PAYROLL
-        ==================================================== */}
+        <header className="page-header">
 
-        {activePage === "Attendance" ? (
+          <div>
+            <h1>
+              {activePage ===
+              "Dashboard"
+                ? "HR Dashboard"
+                : activePage}
+            </h1>
+          </div>
+
+          {(
+            activePage ===
+              "Dashboard" ||
+            activePage ===
+              "Employees"
+          ) && (
+            <button
+              type="button"
+              className="add-button"
+              onClick={
+                openAddForm
+              }
+            >
+              <FaPlus />
+              Add Employee
+            </button>
+          )}
+
+        </header>
+
+        {activePage ===
+        "Attendance" ? (
           <Attendance />
-        ) : activePage === "Payroll" ? (
+        ) : activePage ===
+          "Payroll" ? (
           <Payroll />
         ) : (
           <>
-            {/* =================================================
-                PAGE HEADER
-            ================================================= */}
 
-            <header className="page-header">
-              <div className="page-header-text">
-                <h1>
-                  {activePage === "Dashboard"
-                    ? "HR Dashboard"
-                    : activePage === "Employees"
-                    ? "Employees"
-                    : activePage === "Departments"
-                    ? "Departments"
-                    : activePage === "Leave Requests"
-                    ? "Leave Requests"
-                    : "HR Management"}
-                </h1>
-              </div>
-
-              {(activePage === "Dashboard" ||
-                activePage === "Employees") && (
-                <button
-                  type="button"
-                  className="add-button"
-                  onClick={openAddForm}
-                >
-                  <FaPlus />
-
-                  <span>
-                    Add Employee
-                  </span>
-                </button>
-              )}
-            </header>
-
-            {/* =================================================
-                DASHBOARD
-            ================================================= */}
-
-            {activePage === "Dashboard" && (
+            {activePage ===
+              "Dashboard" && (
               <>
+
                 <section className="stats-grid">
 
-                  <div className="stat-card">
-                    <div className="stat-icon blue">
+                  <StatCard
+                    icon={
                       <FaUsers />
-                    </div>
+                    }
+                    title="Total Employees"
+                    value={
+                      totalEmployees
+                    }
+                    text="All registered employees"
+                    color="blue"
+                  />
 
-                    <div className="stat-content">
-                      <span>
-                        Total Employees
-                      </span>
-
-                      <strong>
-                        {totalEmployees}
-                      </strong>
-
-                      <small>
-                        All registered employees
-                      </small>
-                    </div>
-                  </div>
-
-                  <div className="stat-card">
-                    <div className="stat-icon green">
+                  <StatCard
+                    icon={
                       <FaUserCheck />
-                    </div>
+                    }
+                    title="Active Employees"
+                    value={
+                      activeEmployees
+                    }
+                    text="Currently active"
+                    color="green"
+                  />
 
-                    <div className="stat-content">
-                      <span>
-                        Active Employees
-                      </span>
-
-                      <strong>
-                        {activeEmployees}
-                      </strong>
-
-                      <small>
-                        Currently working
-                      </small>
-                    </div>
-                  </div>
-
-                  <div className="stat-card">
-                    <div className="stat-icon purple">
+                  <StatCard
+                    icon={
                       <FaBuilding />
-                    </div>
+                    }
+                    title="Departments"
+                    value={
+                      departmentCount
+                    }
+                    text="Organization departments"
+                    color="purple"
+                  />
 
-                    <div className="stat-content">
-                      <span>
-                        Departments
-                      </span>
-
-                      <strong>
-                        {departmentCount}
-                      </strong>
-
-                      <small>
-                        Unique departments
-                      </small>
-                    </div>
-                  </div>
-
-                  <div className="stat-card">
-                    <div className="stat-icon red">
+                  <StatCard
+                    icon={
                       <FaUserTimes />
-                    </div>
-
-                    <div className="stat-content">
-                      <span>
-                        Inactive
-                      </span>
-
-                      <strong>
-                        {inactiveEmployees}
-                      </strong>
-
-                      <small>
-                        Inactive employees
-                      </small>
-                    </div>
-                  </div>
+                    }
+                    title="Inactive"
+                    value={
+                      inactiveEmployees
+                    }
+                    text="Inactive employees"
+                    color="red"
+                  />
 
                 </section>
 
-                {/* EMPLOYEE TABLE */}
-
                 <section className="content-card">
+
                   <div className="section-header">
+
                     <div>
                       <h2>
                         Recent Employees
@@ -1474,171 +1767,60 @@ const loadEmployees = async (loginToken = null) => {
                     </div>
 
                     <div className="search-box">
+
                       <FaSearch />
 
                       <input
                         type="text"
-                        value={search}
+                        value={
+                          search
+                        }
                         placeholder="Search employees..."
-                        onChange={(event) =>
+                        onChange={(
+                          event
+                        ) =>
                           setSearch(
-                            event.target.value
+                            event
+                              .target
+                              .value
                           )
                         }
                       />
+
                     </div>
+
                   </div>
 
                   {loading ? (
                     <div className="loading-state">
                       Loading employees...
                     </div>
-                  ) : filteredEmployees.length === 0 ? (
-                    <div className="empty-state">
-                      <FaUsers />
-
-                      <h3>
-                        No employees found
-                      </h3>
-
-                      <p>
-                        Add an employee to get started.
-                      </p>
-                    </div>
                   ) : (
-                    <div className="table-container">
-                      <table className="employee-table">
-                        <thead>
-                          <tr>
-                            <th>Employee</th>
-                            <th>ID</th>
-                            <th>Department</th>
-                            <th>Position</th>
-                            <th>Contact</th>
-                            <th>Salary</th>
-                            <th>Status</th>
-                            <th>Actions</th>
-                          </tr>
-                        </thead>
-
-                        <tbody>
-                          {filteredEmployees.map(
-                            (employee) => (
-                              <tr
-                                key={employee._id}
-                              >
-                                <td>
-                                  <div className="employee-cell">
-                                    <div className="employee-avatar">
-                                      {getInitials(
-                                        employee
-                                      )}
-                                    </div>
-
-                                    <div className="employee-info">
-                                      <strong>
-                                        {getEmployeeName(
-                                          employee
-                                        )}
-                                      </strong>
-
-                                      <span>
-                                        {employee.email ||
-                                          "No email"}
-                                      </span>
-                                    </div>
-                                  </div>
-                                </td>
-
-                                <td>
-                                  {employee.employeeId ||
-                                    "—"}
-                                </td>
-
-                                <td>
-                                  <span className="department-badge">
-                                    {employee.department ||
-                                      "—"}
-                                  </span>
-                                </td>
-
-                                <td>
-                                  {employee.position ||
-                                    "—"}
-                                </td>
-
-                                <td>
-                                  {employee.phone ||
-                                    "—"}
-                                </td>
-
-                                <td>
-                                  ₹
-                                  {Number(
-                                    employee.salary || 0
-                                  ).toLocaleString(
-                                    "en-IN"
-                                  )}
-                                </td>
-
-                                <td>
-                                  <span
-                                    className={`status-badge ${
-                                      String(
-                                        employee.status
-                                      ).toLowerCase() ===
-                                      "active"
-                                        ? "status-active"
-                                        : "status-inactive"
-                                    }`}
-                                  >
-                                    {employee.status ||
-                                      "Unknown"}
-                                  </span>
-                                </td>
-
-                                <td>
-                                  <div className="action-buttons">
-                                    <button
-                                      type="button"
-                                      className="edit-button"
-                                      title="Edit employee"
-                                      onClick={() =>
-                                        openEditForm(
-                                          employee
-                                        )
-                                      }
-                                    >
-                                      <FaEdit />
-                                    </button>
-
-                                    <button
-                                      type="button"
-                                      className="delete-button"
-                                      title="Delete employee"
-                                      onClick={() =>
-                                        deleteEmployee(
-                                          employee._id
-                                        )
-                                      }
-                                    >
-                                      <FaTrash />
-                                    </button>
-                                  </div>
-                                </td>
-                              </tr>
-                            )
-                          )}
-                        </tbody>
-                      </table>
-                    </div>
+                    <EmployeeTable
+                      employees={
+                        filteredEmployees
+                      }
+                      getInitials={
+                        getInitials
+                      }
+                      getEmployeeName={
+                        getEmployeeName
+                      }
+                      openEditForm={
+                        openEditForm
+                      }
+                      deleteEmployee={
+                        deleteEmployee
+                      }
+                    />
                   )}
+
                 </section>
 
-                {/* SYSTEM STATUS */}
-
                 <section className="system-card">
+
                   <div className="system-header">
+
                     <div>
                       <h2>
                         System Status
@@ -1653,83 +1835,50 @@ const loadEmployees = async (loginToken = null) => {
                       <FaCheckCircle />
                       Connected
                     </span>
+
                   </div>
 
                   <div className="system-grid">
 
-                    <div className="system-item">
-                      <div className="system-icon">
+                    <SystemItem
+                      icon={
                         <FaCode />
-                      </div>
+                      }
+                      title="Frontend"
+                      value="Vite / React"
+                    />
 
-                      <div className="system-info">
-                        <strong>
-                          Frontend
-                        </strong>
-
-                        <span>
-                          http://localhost:5173
-                        </span>
-                      </div>
-
-                      <b>
-                        Running
-                      </b>
-                    </div>
-
-                    <div className="system-item">
-                      <div className="system-icon">
+                    <SystemItem
+                      icon={
                         <FaServer />
-                      </div>
+                      }
+                      title="Backend"
+                      value={
+                        API_URL
+                      }
+                    />
 
-                      <div className="system-info">
-                        <strong>
-                          Backend
-                        </strong>
-
-                        <span>
-                          http://localhost:5000
-                        </span>
-                      </div>
-
-                      <b>
-                        Connected
-                      </b>
-                    </div>
-
-                    <div className="system-item">
-                      <div className="system-icon">
+                    <SystemItem
+                      icon={
                         <FaDatabase />
-                      </div>
-
-                      <div className="system-info">
-                        <strong>
-                          Database
-                        </strong>
-
-                        <span>
-                          MongoDB Atlas
-                        </span>
-                      </div>
-
-                      <b>
-                        Connected
-                      </b>
-                    </div>
+                      }
+                      title="Database"
+                      value="MongoDB Atlas"
+                    />
 
                   </div>
+
                 </section>
+
               </>
             )}
 
-            {/* =================================================
-                EMPLOYEES PAGE
-            ================================================= */}
-
-            {activePage === "Employees" && (
+            {activePage ===
+              "Employees" && (
               <section className="content-card">
 
                 <div className="section-header">
+
                   <div>
                     <h2>
                       Employee Management
@@ -1741,176 +1890,63 @@ const loadEmployees = async (loginToken = null) => {
                   </div>
 
                   <div className="search-box">
+
                     <FaSearch />
 
                     <input
                       type="text"
-                      value={search}
+                      value={
+                        search
+                      }
                       placeholder="Search employees..."
-                      onChange={(event) =>
+                      onChange={(
+                        event
+                      ) =>
                         setSearch(
-                          event.target.value
+                          event
+                            .target
+                            .value
                         )
                       }
                     />
+
                   </div>
+
                 </div>
 
                 {loading ? (
                   <div className="loading-state">
                     Loading employees...
                   </div>
-                ) : filteredEmployees.length === 0 ? (
-                  <div className="empty-state">
-                    <FaUsers />
-
-                    <h3>
-                      No employees found
-                    </h3>
-
-                    <p>
-                      Add an employee to get started.
-                    </p>
-                  </div>
                 ) : (
-                  <div className="table-container">
-                    <table className="employee-table">
-                      <thead>
-                        <tr>
-                          <th>Employee</th>
-                          <th>ID</th>
-                          <th>Department</th>
-                          <th>Position</th>
-                          <th>Contact</th>
-                          <th>Salary</th>
-                          <th>Status</th>
-                          <th>Actions</th>
-                        </tr>
-                      </thead>
-
-                      <tbody>
-                        {filteredEmployees.map(
-                          (employee) => (
-                            <tr
-                              key={employee._id}
-                            >
-                              <td>
-                                <div className="employee-cell">
-                                  <div className="employee-avatar">
-                                    {getInitials(
-                                      employee
-                                    )}
-                                  </div>
-
-                                  <div className="employee-info">
-                                    <strong>
-                                      {getEmployeeName(
-                                        employee
-                                      )}
-                                    </strong>
-
-                                    <span>
-                                      {employee.email ||
-                                        "No email"}
-                                    </span>
-                                  </div>
-                                </div>
-                              </td>
-
-                              <td>
-                                {employee.employeeId ||
-                                  "—"}
-                              </td>
-
-                              <td>
-                                <span className="department-badge">
-                                  {employee.department ||
-                                    "—"}
-                                </span>
-                              </td>
-
-                              <td>
-                                {employee.position ||
-                                  "—"}
-                              </td>
-
-                              <td>
-                                {employee.phone ||
-                                  "—"}
-                              </td>
-
-                              <td>
-                                ₹
-                                {Number(
-                                  employee.salary || 0
-                                ).toLocaleString(
-                                  "en-IN"
-                                )}
-                              </td>
-
-                              <td>
-                                <span
-                                  className={`status-badge ${
-                                    String(
-                                      employee.status
-                                    ).toLowerCase() ===
-                                    "active"
-                                      ? "status-active"
-                                      : "status-inactive"
-                                  }`}
-                                >
-                                  {employee.status ||
-                                    "Unknown"}
-                                </span>
-                              </td>
-
-                              <td>
-                                <div className="action-buttons">
-                                  <button
-                                    type="button"
-                                    className="edit-button"
-                                    title="Edit employee"
-                                    onClick={() =>
-                                      openEditForm(
-                                        employee
-                                      )
-                                    }
-                                  >
-                                    <FaEdit />
-                                  </button>
-
-                                  <button
-                                    type="button"
-                                    className="delete-button"
-                                    title="Delete employee"
-                                    onClick={() =>
-                                      deleteEmployee(
-                                        employee._id
-                                      )
-                                    }
-                                  >
-                                    <FaTrash />
-                                  </button>
-                                </div>
-                              </td>
-                            </tr>
-                          )
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
+                  <EmployeeTable
+                    employees={
+                      filteredEmployees
+                    }
+                    getInitials={
+                      getInitials
+                    }
+                    getEmployeeName={
+                      getEmployeeName
+                    }
+                    openEditForm={
+                      openEditForm
+                    }
+                    deleteEmployee={
+                      deleteEmployee
+                    }
+                  />
                 )}
+
               </section>
             )}
 
-            {/* =================================================
-                DEPARTMENTS PAGE
-            ================================================= */}
-
-            {activePage === "Departments" && (
+            {activePage ===
+              "Departments" && (
               <section className="content-card">
 
                 <div className="section-header">
+
                   <div>
                     <h2>
                       Departments
@@ -1929,41 +1965,46 @@ const loadEmployees = async (loginToken = null) => {
                     }
                   >
                     <FaPlus />
-
-                    <span>
-                      Add Department
-                    </span>
+                    Add Department
                   </button>
+
                 </div>
 
                 <div className="department-grid">
 
-                  {departments.length === 0 ? (
+                  {departments.length ===
+                  0 ? (
                     <div className="empty-state">
+
                       <FaBuilding />
 
                       <h3>
                         No departments found
                       </h3>
 
-                      <p>
-                        Add a department to get started.
-                      </p>
                     </div>
                   ) : (
                     departments.map(
-                      (department) => (
+                      (
+                        department
+                      ) => (
                         <div
                           className="department-card"
-                          key={department._id}
+                          key={
+                            department._id
+                          }
                         >
+
                           <div className="department-card-icon">
                             <FaBuilding />
                           </div>
 
                           <div className="department-card-content">
+
                             <h3>
-                              {department.name}
+                              {
+                                department.name
+                              }
                             </h3>
 
                             <p>
@@ -1974,23 +2015,14 @@ const loadEmployees = async (loginToken = null) => {
                             <strong>
                               {department.employeeCount ||
                                 0}{" "}
-                              {department.employeeCount ===
-                              1
-                                ? "employee"
-                                : "employees"}
+                              employees
                             </strong>
 
-                            <span
-                              className={
-                                department.status ===
-                                "Active"
-                                  ? "status-badge status-active"
-                                  : "status-badge status-inactive"
-                              }
-                            >
+                            <span className="status-badge status-active">
                               {department.status ||
-                                "Unknown"}
+                                "Active"}
                             </span>
+
                           </div>
 
                           <div className="action-buttons">
@@ -1998,7 +2030,6 @@ const loadEmployees = async (loginToken = null) => {
                             <button
                               type="button"
                               className="edit-button"
-                              title="Edit department"
                               onClick={() =>
                                 openEditDepartmentForm(
                                   department
@@ -2011,7 +2042,6 @@ const loadEmployees = async (loginToken = null) => {
                             <button
                               type="button"
                               className="delete-button"
-                              title="Delete department"
                               onClick={() =>
                                 deleteDepartment(
                                   department._id
@@ -2022,428 +2052,1552 @@ const loadEmployees = async (loginToken = null) => {
                             </button>
 
                           </div>
+
                         </div>
                       )
                     )
                   )}
 
                 </div>
+
               </section>
             )}
 
-            {/* =================================================
-                LEAVE REQUESTS
-            ================================================= */}
-
-            {activePage === "Leave Requests" && (
+            {activePage ===
+              "Leave Requests" && (
               <LeaveRequests
-                employees={employees}
+                employees={
+                  employees
+                }
                 token={token}
               />
             )}
+
           </>
         )}
+
       </main>
 
-      {/* ======================================================
-          ADD / EDIT EMPLOYEE MODAL
-      ====================================================== */}
-
       {showForm && (
-        <div
-          className="modal-overlay"
-          onClick={() => {
-            setShowForm(false);
-            resetForm();
-          }}
-        >
-          <div
-            className="employee-modal"
-            onClick={(event) =>
-              event.stopPropagation()
-            }
-          >
-
-            <div className="modal-header">
-
-              <div>
-                <h2>
-                  {editingId
-                    ? "Edit Employee"
-                    : "Add Employee"}
-                </h2>
-
-                <p>
-                  {editingId
-                    ? "Update employee information."
-                    : "Enter employee information."}
-                </p>
-              </div>
-
-              <button
-                type="button"
-                className="modal-close-button"
-                onClick={() => {
-                  setShowForm(false);
-                  resetForm();
-                }}
-              >
-                <FaTimes />
-              </button>
-
-            </div>
-
-            <form
-              className="employee-form"
-              onSubmit={handleSubmit}
-            >
-
-              <div className="form-grid">
-
-                <div className="form-group">
-                  <label>
-                    Employee ID *
-                  </label>
-
-                  <input
-                    type="text"
-                    name="employeeId"
-                    value={form.employeeId}
-                    onChange={handleChange}
-                    placeholder="EMP001"
-                    required
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label>
-                    First Name *
-                  </label>
-
-                  <input
-                    type="text"
-                    name="firstName"
-                    value={form.firstName}
-                    onChange={handleChange}
-                    placeholder="First name"
-                    required
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label>
-                    Last Name *
-                  </label>
-
-                  <input
-                    type="text"
-                    name="lastName"
-                    value={form.lastName}
-                    onChange={handleChange}
-                    placeholder="Last name"
-                    required
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label>
-                    Email *
-                  </label>
-
-                  <input
-                    type="email"
-                    name="email"
-                    value={form.email}
-                    onChange={handleChange}
-                    placeholder="employee@example.com"
-                    required
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label>
-                    Phone
-                  </label>
-
-                  <input
-                    type="text"
-                    name="phone"
-                    value={form.phone}
-                    onChange={handleChange}
-                    placeholder="9876543210"
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label>
-                    Department *
-                  </label>
-
-                  <select
-                    name="department"
-                    value={form.department}
-                    onChange={handleChange}
-                    required
-                  >
-                    <option value="">
-                      Select department
-                    </option>
-
-                    {departments.map(
-                      (department) => (
-                        <option
-                          key={
-                            department._id ||
-                            department.name
-                          }
-                          value={
-                            department.name
-                          }
-                        >
-                          {department.name}
-                        </option>
-                      )
-                    )}
-                  </select>
-                </div>
-
-                <div className="form-group">
-                  <label>
-                    Position *
-                  </label>
-
-                  <input
-                    type="text"
-                    name="position"
-                    value={form.position}
-                    onChange={handleChange}
-                    placeholder="Software Developer"
-                    required
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label>
-                    Salary
-                  </label>
-
-                  <input
-                    type="number"
-                    name="salary"
-                    value={form.salary}
-                    onChange={handleChange}
-                    placeholder="50000"
-                    min="0"
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label>
-                    Status
-                  </label>
-
-                  <select
-                    name="status"
-                    value={form.status}
-                    onChange={handleChange}
-                  >
-                    <option value="Active">
-                      Active
-                    </option>
-
-                    <option value="Inactive">
-                      Inactive
-                    </option>
-                  </select>
-                </div>
-
-                <div className="form-group form-group-full">
-                  <label>
-                    Address
-                  </label>
-
-                  <textarea
-                    name="address"
-                    value={form.address}
-                    onChange={handleChange}
-                    placeholder="Employee address"
-                    rows="3"
-                  />
-                </div>
-
-              </div>
-
-              <div className="form-actions">
-
-                <button
-                  type="button"
-                  className="cancel-button"
-                  onClick={() => {
-                    setShowForm(false);
-                    resetForm();
-                  }}
-                >
-                  Cancel
-                </button>
-
-                <button
-                  type="submit"
-                  className="save-button"
-                >
-                  {editingId
-                    ? "Update Employee"
-                    : "Save Employee"}
-                </button>
-
-              </div>
-
-            </form>
-          </div>
-        </div>
+        <EmployeeModal
+          form={form}
+          setShowForm={
+            setShowForm
+          }
+          resetForm={
+            resetForm
+          }
+          editingId={
+            editingId
+          }
+          handleChange={
+            handleChange
+          }
+          handleSubmit={
+            handleSubmit
+          }
+          departments={
+            departments
+          }
+        />
       )}
-
-      {/* ======================================================
-          ADD / EDIT DEPARTMENT MODAL
-      ====================================================== */}
 
       {showDepartmentForm && (
-        <div
-          className="modal-overlay"
-          onClick={() => {
-            setShowDepartmentForm(false);
-            resetDepartmentForm();
-          }}
+        <DepartmentModal
+          departmentForm={
+            departmentForm
+          }
+          setShowDepartmentForm={
+            setShowDepartmentForm
+          }
+          resetDepartmentForm={
+            resetDepartmentForm
+          }
+          editingDepartmentId={
+            editingDepartmentId
+          }
+          handleDepartmentChange={
+            handleDepartmentChange
+          }
+          handleDepartmentSubmit={
+            handleDepartmentSubmit
+          }
+        />
+      )}
+
+    </div>
+  );
+}
+
+/* ================================================================
+   ADMIN LOGIN
+================================================================ */
+
+function AdminLogin({
+  loginForm,
+  showPassword,
+  handleLoginChange,
+  handleLogin,
+  setShowPassword,
+  onEmployeeLogin,
+}) {
+  return (
+    <div className="login-page">
+
+      <div className="login-card">
+
+        <div className="login-logo">
+          <FaUserTie />
+        </div>
+
+        <h2>
+          Administrator Login
+        </h2>
+
+        <p>
+          Login to manage your HR system.
+        </p>
+
+        <form
+          onSubmit={
+            handleLogin
+          }
         >
-          <div
-            className="employee-modal"
-            onClick={(event) =>
-              event.stopPropagation()
+
+          <label>
+            Email
+          </label>
+
+          <input
+            type="email"
+            name="email"
+            value={
+              loginForm.email
+            }
+            onChange={
+              handleLoginChange
+            }
+            placeholder="admin@example.com"
+            required
+          />
+
+          <label>
+            Password
+          </label>
+
+          <div className="password-input">
+
+            <input
+              type={
+                showPassword
+                  ? "text"
+                  : "password"
+              }
+              name="password"
+              value={
+                loginForm.password
+              }
+              onChange={
+                handleLoginChange
+              }
+              placeholder="Enter password"
+              required
+            />
+
+            <button
+              type="button"
+              onClick={() =>
+                setShowPassword(
+                  (value) =>
+                    !value
+                )
+              }
+            >
+              {showPassword ? (
+                <FaEyeSlash />
+              ) : (
+                <FaEye />
+              )}
+            </button>
+
+          </div>
+
+          <button
+            type="submit"
+            className="login-button"
+          >
+            Login
+          </button>
+
+        </form>
+
+        <div className="employee-login-link">
+
+          <span>
+            Are you an employee?
+          </span>
+
+          <button
+            type="button"
+            onClick={
+              onEmployeeLogin
             }
           >
+            Employee Login /
+            Registration
+            <FaArrowRight />
+          </button>
 
-            <div className="modal-header">
+        </div>
+
+      </div>
+
+    </div>
+  );
+}
+
+/* ================================================================
+   EMPLOYEE DASHBOARD
+================================================================ */
+
+function EmployeeDashboard({
+  user,
+  employeeName,
+  attendanceHistory,
+  todayAttendance,
+  attendanceLoading,
+  attendanceActionLoading,
+  hasCheckedIn,
+  hasCheckedOut,
+  attendanceStatus,
+  getWorkingHours,
+  formatTime,
+  formatDate,
+  getInitials,
+  handleEmployeeCheckIn,
+  handleEmployeeCheckOut,
+  loadEmployeeAttendance,
+  handleLogout,
+}) {
+  const statusLower =
+    String(
+      attendanceStatus || ""
+    ).toLowerCase();
+
+  return (
+    <div className="employee-dashboard">
+
+      <header className="employee-header">
+
+        <div className="employee-header-content">
+
+          <div className="employee-header-title">
+
+            <div className="employee-header-icon">
+              <FaUserTie />
+            </div>
+
+            <div>
+
+              <span>
+                EMPLOYEE PORTAL
+              </span>
+
+              <h1>
+                Welcome,{" "}
+                {employeeName} 👋
+              </h1>
+
+              <p>
+                Manage your attendance and track your working hours.
+              </p>
+
+            </div>
+
+          </div>
+
+          <button
+            type="button"
+            className="employee-logout"
+            onClick={
+              handleLogout
+            }
+          >
+            Logout
+          </button>
+
+        </div>
+
+      </header>
+
+      <main className="employee-main">
+
+        <section className="employee-profile-card">
+
+          <div className="employee-profile-avatar">
+            {getInitials(user)}
+          </div>
+
+          <div className="employee-profile-details">
+
+            <div className="employee-profile-heading">
 
               <div>
+
                 <h2>
-                  {editingDepartmentId
-                    ? "Edit Department"
-                    : "Add Department"}
+                  {employeeName}
                 </h2>
 
                 <p>
-                  {editingDepartmentId
-                    ? "Update department information."
-                    : "Enter department information."}
+                  {user?.position ||
+                    "Employee"}
                 </p>
+
               </div>
+
+              <span className="employee-active-badge">
+                <span />
+                {user?.status ||
+                  "Active"}
+              </span>
+
+            </div>
+
+            <div className="employee-profile-info">
+
+              <span>
+                <FaEnvelope />
+                {user?.email ||
+                  "No email"}
+              </span>
+
+              <span>
+                <FaBriefcase />
+                {user?.department ||
+                  "No department"}
+              </span>
+
+              {user?.phone && (
+                <span>
+                  <FaPhone />
+                  {user.phone}
+                </span>
+              )}
+
+              {user?.address && (
+                <span>
+                  <FaMapMarkerAlt />
+                  {user.address}
+                </span>
+              )}
+
+            </div>
+
+          </div>
+
+        </section>
+
+        <section className="employee-attendance-section">
+
+          <div className="employee-section-heading">
+
+            <div>
+
+              <div className="section-icon">
+                <FaCalendarCheck />
+              </div>
+
+              <div>
+
+                <h2>
+                  Today's Attendance
+                </h2>
+
+                <p>
+                  Track your working time for today.
+                </p>
+
+              </div>
+
+            </div>
+
+            <button
+              type="button"
+              className="refresh-attendance"
+              onClick={() =>
+                loadEmployeeAttendance()
+              }
+              disabled={
+                attendanceLoading
+              }
+            >
+
+              <FaSyncAlt
+                className={
+                  attendanceLoading
+                    ? "spin-icon"
+                    : ""
+                }
+              />
+
+              {attendanceLoading
+                ? "Refreshing..."
+                : "Refresh"}
+
+            </button>
+
+          </div>
+
+          <div className="employee-attendance-grid">
+
+            <AttendanceCard
+              title="Login Time"
+              value={formatTime(
+                todayAttendance?.loginTime
+              )}
+              icon={
+                <FaSignInAlt />
+              }
+              className="login-card"
+            />
+
+            <AttendanceCard
+              title="Logout Time"
+              value={formatTime(
+                todayAttendance?.logoutTime
+              )}
+              icon={
+                <FaSignOutAlt />
+              }
+              className="logout-card"
+            />
+
+            <AttendanceCard
+              title="Working Hours"
+              value={
+                getWorkingHours()
+              }
+              icon={
+                <FaClock />
+              }
+              className="hours-card"
+            />
+
+            <AttendanceCard
+              title="Today's Status"
+              value={
+                attendanceStatus
+              }
+              icon={
+                <FaChartLine />
+              }
+              className={
+                statusLower ===
+                "present"
+                  ? "present-card"
+                  : statusLower ===
+                    "half day"
+                  ? "halfday-card"
+                  : "status-card"
+              }
+            />
+
+          </div>
+
+          <div className="attendance-action-area">
+
+            <div>
+
+              <h3>
+                Attendance Actions
+              </h3>
+
+              <p>
+                Mark your attendance when you start and finish your work.
+              </p>
+
+            </div>
+
+            <div className="attendance-buttons">
 
               <button
                 type="button"
-                className="modal-close-button"
-                onClick={() => {
-                  setShowDepartmentForm(false);
-                  resetDepartmentForm();
-                }}
+                className="check-in-button"
+                onClick={
+                  handleEmployeeCheckIn
+                }
+                disabled={
+                  attendanceActionLoading ||
+                  hasCheckedIn
+                }
               >
-                <FaTimes />
+
+                <FaSignInAlt />
+
+                {hasCheckedIn
+                  ? "Checked In"
+                  : attendanceActionLoading
+                  ? "Processing..."
+                  : "Check In"}
+
+              </button>
+
+              <button
+                type="button"
+                className="check-out-button"
+                onClick={
+                  handleEmployeeCheckOut
+                }
+                disabled={
+                  attendanceActionLoading ||
+                  !hasCheckedIn ||
+                  hasCheckedOut
+                }
+              >
+
+                <FaSignOutAlt />
+
+                {hasCheckedOut
+                  ? "Checked Out"
+                  : "Check Out"}
+
               </button>
 
             </div>
 
-            <form
-              className="employee-form"
-              onSubmit={handleDepartmentSubmit}
-            >
+          </div>
 
-              <div className="form-grid">
+          {!hasCheckedIn && (
+            <div className="attendance-message neutral-message">
+              <FaClock />
+              Please check in when you start working.
+            </div>
+          )}
 
-                <div className="form-group">
+          {hasCheckedIn &&
+            !hasCheckedOut && (
+              <div className="attendance-message success-message">
+                <FaCheckCircle />
+                You are currently checked in. Check out when you finish working.
+              </div>
+            )}
+
+          {hasCheckedOut && (
+            <div className="attendance-message completed-message">
+              <FaCheckCircle />
+              Today's attendance has been completed.
+            </div>
+          )}
+
+        </section>
+
+        <section className="employee-history-section">
+
+          <div className="employee-section-heading">
+
+            <div>
+
+              <div className="section-icon">
+                <FaHistory />
+              </div>
+
+              <div>
+
+                <h2>
+                  Attendance History
+                </h2>
+
+                <p>
+                  View your previous attendance records.
+                </p>
+
+              </div>
+
+            </div>
+
+            <span className="record-count">
+              {
+                attendanceHistory.length
+              }{" "}
+              Records
+            </span>
+
+          </div>
+
+          {attendanceLoading ? (
+            <div className="employee-loading">
+
+              <FaSyncAlt className="spin-icon" />
+
+              <p>
+                Loading attendance history...
+              </p>
+
+            </div>
+          ) : attendanceHistory.length ===
+            0 ? (
+            <div className="employee-empty">
+
+              <FaCalendarCheck />
+
+              <h3>
+                No attendance records
+              </h3>
+
+              <p>
+                Your attendance history will appear here.
+              </p>
+
+            </div>
+          ) : (
+            <div className="employee-history-table-wrapper">
+
+              <table className="employee-history-table">
+
+                <thead>
+
+                  <tr>
+                    <th>Date</th>
+                    <th>Login</th>
+                    <th>Logout</th>
+                    <th>Working Hours</th>
+                    <th>Status</th>
+                  </tr>
+
+                </thead>
+
+                <tbody>
+
+                  {attendanceHistory.map(
+                    (
+                      record,
+                      index
+                    ) => (
+                      <tr
+                        key={
+                          record._id ||
+                          `${record.date}-${index}`
+                        }
+                      >
+
+                        <td>
+                          <strong>
+                            {formatDate(
+                              record.date
+                            )}
+                          </strong>
+                        </td>
+
+                        <td>
+                          <span className="time-value">
+
+                            <FaSignInAlt />
+
+                            {formatTime(
+                              record.loginTime
+                            )}
+
+                          </span>
+                        </td>
+
+                        <td>
+                          <span className="time-value">
+
+                            <FaSignOutAlt />
+
+                            {formatTime(
+                              record.logoutTime
+                            )}
+
+                          </span>
+                        </td>
+
+                        <td>
+
+                          {record.workingHours !==
+                            undefined &&
+                          record.workingHours !==
+                            null
+                            ? `${Number(
+                                record.workingHours
+                              ).toFixed(
+                                2
+                              )} hrs`
+                            : "In progress"}
+
+                        </td>
+
+                        <td>
+
+                          <AttendanceStatus
+                            status={
+                              record.status ||
+                              "N/A"
+                            }
+                          />
+
+                        </td>
+
+                      </tr>
+                    )
+                  )}
+
+                </tbody>
+
+              </table>
+
+            </div>
+          )}
+
+        </section>
+
+        <section className="employee-info-banner">
+
+          <div className="info-banner-icon">
+            <FaShieldAlt />
+          </div>
+
+          <div>
+
+            <h3>
+              Your Employee Portal
+            </h3>
+
+            <p>
+              You can access only your employee profile and attendance
+              information. Administrator records, employee management,
+              payroll management and other HR administration features
+              are restricted to authorized administrators.
+            </p>
+
+          </div>
+
+        </section>
+
+      </main>
+
+    </div>
+  );
+}
+
+/* ================================================================
+   ATTENDANCE CARD
+================================================================ */
+
+function AttendanceCard({
+  title,
+  value,
+  icon,
+  className,
+}) {
+  return (
+    <div
+      className={`attendance-card ${className}`}
+    >
+
+      <div className="attendance-card-top">
+
+        <span>
+          {title}
+        </span>
+
+        <div className="attendance-card-icon">
+          {icon}
+        </div>
+
+      </div>
+
+      <strong>
+        {value}
+      </strong>
+
+    </div>
+  );
+}
+
+/* ================================================================
+   ATTENDANCE STATUS
+================================================================ */
+
+function AttendanceStatus({
+  status,
+}) {
+  const normalized =
+    String(status)
+      .toLowerCase();
+
+  let className =
+    "history-status neutral";
+
+  if (
+    normalized ===
+    "present"
+  ) {
+    className =
+      "history-status present";
+  } else if (
+    normalized ===
+    "half day"
+  ) {
+    className =
+      "history-status half-day";
+  } else if (
+    normalized ===
+    "absent"
+  ) {
+    className =
+      "history-status absent";
+  }
+
+  return (
+    <span className={className}>
+      {status}
+    </span>
+  );
+}
+
+/* ================================================================
+   STAT CARD
+================================================================ */
+
+function StatCard({
+  icon,
+  title,
+  value,
+  text,
+  color,
+}) {
+  return (
+    <div className="stat-card">
+
+      <div
+        className={`stat-icon ${color}`}
+      >
+        {icon}
+      </div>
+
+      <div className="stat-content">
+
+        <span>
+          {title}
+        </span>
+
+        <strong>
+          {value}
+        </strong>
+
+        <small>
+          {text}
+        </small>
+
+      </div>
+
+    </div>
+  );
+}
+
+/* ================================================================
+   SYSTEM ITEM
+================================================================ */
+
+function SystemItem({
+  icon,
+  title,
+  value,
+}) {
+  return (
+    <div className="system-item">
+
+      {icon}
+
+      <div className="system-info">
+
+        <strong>
+          {title}
+        </strong>
+
+        <span>
+          {value}
+        </span>
+
+      </div>
+
+      <b>
+        Connected
+      </b>
+
+    </div>
+  );
+}
+
+/* ================================================================
+   EMPLOYEE MODAL
+================================================================ */
+
+function EmployeeModal({
+  form,
+  setShowForm,
+  resetForm,
+  editingId,
+  handleChange,
+  handleSubmit,
+  departments,
+}) {
+  const close = () => {
+    setShowForm(false);
+    resetForm();
+  };
+
+  const fields = [
+    [
+      "employeeId",
+      "Employee ID",
+      "EMP001",
+    ],
+    [
+      "firstName",
+      "First Name",
+      "First name",
+    ],
+    [
+      "lastName",
+      "Last Name",
+      "Last name",
+    ],
+    [
+      "email",
+      "Email",
+      "employee@example.com",
+    ],
+    [
+      "phone",
+      "Phone",
+      "9876543210",
+    ],
+    [
+      "position",
+      "Position",
+      "Software Developer",
+    ],
+    [
+      "salary",
+      "Salary",
+      "50000",
+    ],
+  ];
+
+  return (
+    <div
+      className="modal-overlay"
+      onClick={close}
+    >
+
+      <div
+        className="employee-modal"
+        onClick={(event) =>
+          event.stopPropagation()
+        }
+      >
+
+        <div className="modal-header">
+
+          <div>
+
+            <h2>
+              {editingId
+                ? "Edit Employee"
+                : "Add Employee"}
+            </h2>
+
+            <p>
+              Enter employee information.
+            </p>
+
+          </div>
+
+          <button
+            type="button"
+            className="modal-close-button"
+            onClick={close}
+          >
+            <FaTimes />
+          </button>
+
+        </div>
+
+        <form
+          className="employee-form"
+          onSubmit={
+            handleSubmit
+          }
+        >
+
+          <div className="form-grid">
+
+            {fields.map(
+              ([
+                name,
+                label,
+                placeholder,
+              ]) => (
+                <div
+                  className="form-group"
+                  key={name}
+                >
+
                   <label>
-                    Department Name *
+                    {label}
+
+                    {[
+                      "employeeId",
+                      "firstName",
+                      "lastName",
+                      "email",
+                      "position",
+                    ].includes(
+                      name
+                    ) &&
+                      " *"}
                   </label>
 
                   <input
-                    type="text"
-                    name="name"
-                    value={departmentForm.name}
-                    onChange={
-                      handleDepartmentChange
+                    type={
+                      name ===
+                      "email"
+                        ? "email"
+                        : name ===
+                          "salary"
+                        ? "number"
+                        : "text"
                     }
-                    placeholder="e.g. Engineering"
-                    required
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label>
-                    Status
-                  </label>
-
-                  <select
-                    name="status"
-                    value={departmentForm.status}
-                    onChange={
-                      handleDepartmentChange
-                    }
-                  >
-                    <option value="Active">
-                      Active
-                    </option>
-
-                    <option value="Inactive">
-                      Inactive
-                    </option>
-                  </select>
-                </div>
-
-                <div className="form-group form-group-full">
-                  <label>
-                    Description
-                  </label>
-
-                  <textarea
-                    name="description"
+                    name={name}
                     value={
-                      departmentForm.description
+                      form[name]
                     }
                     onChange={
-                      handleDepartmentChange
+                      handleChange
                     }
-                    placeholder="Enter department description"
-                    rows="4"
+                    placeholder={
+                      placeholder
+                    }
+                    required={[
+                      "employeeId",
+                      "firstName",
+                      "lastName",
+                      "email",
+                      "position",
+                    ].includes(
+                      name
+                    )}
                   />
+
                 </div>
+              )
+            )}
 
-              </div>
+            <div className="form-group">
 
-              <div className="form-actions">
+              <label>
+                Department *
+              </label>
 
-                <button
-                  type="button"
-                  className="cancel-button"
-                  onClick={() => {
-                    setShowDepartmentForm(false);
-                    resetDepartmentForm();
-                  }}
-                >
-                  Cancel
-                </button>
+              <select
+                name="department"
+                value={
+                  form.department
+                }
+                onChange={
+                  handleChange
+                }
+                required
+              >
 
-                <button
-                  type="submit"
-                  className="save-button"
-                >
-                  {editingDepartmentId
-                    ? "Update Department"
-                    : "Save Department"}
-                </button>
+                <option value="">
+                  Select department
+                </option>
 
-              </div>
+                {departments.map(
+                  (
+                    department
+                  ) => (
+                    <option
+                      key={
+                        department._id
+                      }
+                      value={
+                        department.name
+                      }
+                    >
+                      {
+                        department.name
+                      }
+                    </option>
+                  )
+                )}
 
-            </form>
+              </select>
+
+            </div>
+
+            <div className="form-group">
+
+              <label>
+                Status
+              </label>
+
+              <select
+                name="status"
+                value={
+                  form.status
+                }
+                onChange={
+                  handleChange
+                }
+              >
+
+                <option value="active">
+                  Active
+                </option>
+
+                <option value="inactive">
+                  Inactive
+                </option>
+
+              </select>
+
+            </div>
+
+            <div className="form-group form-group-full">
+
+              <label>
+                Address
+              </label>
+
+              <textarea
+                name="address"
+                value={
+                  form.address
+                }
+                onChange={
+                  handleChange
+                }
+                rows="3"
+                placeholder="Employee address"
+              />
+
+            </div>
+
           </div>
+
+          <div className="form-actions">
+
+            <button
+              type="button"
+              className="cancel-button"
+              onClick={close}
+            >
+              Cancel
+            </button>
+
+            <button
+              type="submit"
+              className="save-button"
+            >
+              {editingId
+                ? "Update Employee"
+                : "Save Employee"}
+            </button>
+
+          </div>
+
+        </form>
+
+      </div>
+
+    </div>
+  );
+}
+
+/* ================================================================
+   DEPARTMENT MODAL
+================================================================ */
+
+function DepartmentModal({
+  departmentForm,
+  setShowDepartmentForm,
+  resetDepartmentForm,
+  editingDepartmentId,
+  handleDepartmentChange,
+  handleDepartmentSubmit,
+}) {
+  const close = () => {
+    setShowDepartmentForm(
+      false
+    );
+
+    resetDepartmentForm();
+  };
+
+  return (
+    <div
+      className="modal-overlay"
+      onClick={close}
+    >
+
+      <div
+        className="employee-modal"
+        onClick={(event) =>
+          event.stopPropagation()
+        }
+      >
+
+        <div className="modal-header">
+
+          <div>
+
+            <h2>
+              {editingDepartmentId
+                ? "Edit Department"
+                : "Add Department"}
+            </h2>
+
+            <p>
+              Manage department information.
+            </p>
+
+          </div>
+
+          <button
+            type="button"
+            className="modal-close-button"
+            onClick={close}
+          >
+            <FaTimes />
+          </button>
+
         </div>
-      )}
+
+        <form
+          className="employee-form"
+          onSubmit={
+            handleDepartmentSubmit
+          }
+        >
+
+          <div className="form-grid">
+
+            <div className="form-group">
+
+              <label>
+                Department Name *
+              </label>
+
+              <input
+                type="text"
+                name="name"
+                value={
+                  departmentForm.name
+                }
+                onChange={
+                  handleDepartmentChange
+                }
+                placeholder="Engineering"
+                required
+              />
+
+            </div>
+
+            <div className="form-group">
+
+              <label>
+                Status
+              </label>
+
+              <select
+                name="status"
+                value={
+                  departmentForm.status
+                }
+                onChange={
+                  handleDepartmentChange
+                }
+              >
+
+                <option value="active">
+                  Active
+                </option>
+
+                <option value="inactive">
+                  Inactive
+                </option>
+
+              </select>
+
+            </div>
+
+            <div className="form-group form-group-full">
+
+              <label>
+                Description
+              </label>
+
+              <textarea
+                name="description"
+                value={
+                  departmentForm.description
+                }
+                onChange={
+                  handleDepartmentChange
+                }
+                rows="4"
+                placeholder="Department description"
+              />
+
+            </div>
+
+          </div>
+
+          <div className="form-actions">
+
+            <button
+              type="button"
+              className="cancel-button"
+              onClick={close}
+            >
+              Cancel
+            </button>
+
+            <button
+              type="submit"
+              className="save-button"
+            >
+              {editingDepartmentId
+                ? "Update Department"
+                : "Save Department"}
+            </button>
+
+          </div>
+
+        </form>
+
+      </div>
+
+    </div>
+  );
+}
+
+/* ================================================================
+   EMPLOYEE TABLE
+================================================================ */
+
+function EmployeeTable({
+  employees,
+  getInitials,
+  getEmployeeName,
+  openEditForm,
+  deleteEmployee,
+}) {
+  if (!employees.length) {
+    return (
+      <div className="empty-state">
+
+        <FaUsers />
+
+        <h3>
+          No employees found
+        </h3>
+
+        <p>
+          Add an employee to get started.
+        </p>
+
+      </div>
+    );
+  }
+
+  return (
+    <div className="table-container">
+
+      <table className="employee-table">
+
+        <thead>
+
+          <tr>
+            <th>
+              Employee
+            </th>
+
+            <th>
+              ID
+            </th>
+
+            <th>
+              Department
+            </th>
+
+            <th>
+              Position
+            </th>
+
+            <th>
+              Contact
+            </th>
+
+            <th>
+              Salary
+            </th>
+
+            <th>
+              Status
+            </th>
+
+            <th>
+              Actions
+            </th>
+          </tr>
+
+        </thead>
+
+        <tbody>
+
+          {employees.map(
+            (employee) => (
+              <tr
+                key={
+                  employee._id
+                }
+              >
+
+                <td>
+
+                  <div className="employee-cell">
+
+                    <div className="employee-avatar">
+                      {getInitials(
+                        employee
+                      )}
+                    </div>
+
+                    <div className="employee-info">
+
+                      <strong>
+                        {getEmployeeName(
+                          employee
+                        )}
+                      </strong>
+
+                      <span>
+                        {employee.email ||
+                          "No email"}
+                      </span>
+
+                    </div>
+
+                  </div>
+
+                </td>
+
+                <td>
+                  {
+                    employee.employeeId
+                  }
+                </td>
+
+                <td>
+
+                  <span className="department-badge">
+                    {
+                      employee.department ||
+                      "—"
+                    }
+                  </span>
+
+                </td>
+
+                <td>
+                  {
+                    employee.position ||
+                    "—"
+                  }
+                </td>
+
+                <td>
+                  {
+                    employee.phone ||
+                    "—"
+                  }
+                </td>
+
+                <td>
+                  ₹
+                  {Number(
+                    employee.salary ||
+                      0
+                  ).toLocaleString(
+                    "en-IN"
+                  )}
+                </td>
+
+                <td>
+
+                  <span
+                    className={`status-badge ${
+                      String(
+                        employee.status ||
+                          ""
+                      ).toLowerCase() ===
+                      "active"
+                        ? "status-active"
+                        : "status-inactive"
+                    }`}
+                  >
+                    {
+                      employee.status ||
+                      "Inactive"
+                    }
+                  </span>
+
+                </td>
+
+                <td>
+
+                  <div className="action-buttons">
+
+                    <button
+                      type="button"
+                      className="edit-button"
+                      onClick={() =>
+                        openEditForm(
+                          employee
+                        )
+                      }
+                    >
+                      <FaEdit />
+                    </button>
+
+                    <button
+                      type="button"
+                      className="delete-button"
+                      onClick={() =>
+                        deleteEmployee(
+                          employee._id
+                        )
+                      }
+                    >
+                      <FaTrash />
+                    </button>
+
+                  </div>
+
+                </td>
+
+              </tr>
+            )
+          )}
+
+        </tbody>
+
+      </table>
 
     </div>
   );

@@ -7,24 +7,59 @@ const {
   deleteLeaveRequest,
 } = require("../controllers/leaveRequestController");
 
-const protect = require("../middleware/authMiddleware");
-const allowRoles = require("../middleware/roleMiddleware");
+const {
+  protect,
+} = require("../middleware/authMiddleware");
+
+const {
+  allowRoles,
+} = require("../middleware/roleMiddleware");
 
 const router = express.Router();
 
-// Authentication required for every leave request
+// ============================================================
+// AUTHENTICATION REQUIRED FOR EVERY LEAVE REQUEST
+// ============================================================
+
 router.use(protect);
 
-// Get all leave requests
-router.get("/", getLeaveRequests);
+// ============================================================
+// GET LEAVE REQUESTS
+// ============================================================
 
-// Create leave request
-router.post("/", createLeaveRequest);
+router.get(
+  "/",
+  getLeaveRequests
+);
 
-// Admin only: approve/reject
-router.put("/:id", allowRoles("admin"), updateLeaveRequestStatus);
+// ============================================================
+// CREATE LEAVE REQUEST
+// Employee can create
+// ============================================================
 
-// Admin only: delete
-router.delete("/:id", allowRoles("admin"), deleteLeaveRequest);
+router.post(
+  "/",
+  createLeaveRequest
+);
+
+// ============================================================
+// ADMIN ONLY: APPROVE / REJECT
+// ============================================================
+
+router.put(
+  "/:id",
+  allowRoles("admin"),
+  updateLeaveRequestStatus
+);
+
+// ============================================================
+// ADMIN ONLY: DELETE
+// ============================================================
+
+router.delete(
+  "/:id",
+  allowRoles("admin"),
+  deleteLeaveRequest
+);
 
 module.exports = router;

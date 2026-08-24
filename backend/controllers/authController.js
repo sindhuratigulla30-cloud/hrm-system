@@ -2,220 +2,344 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const Employee = require("../models/Employee");
 
-/*
-|--------------------------------------------------------------------------
-| Employee Login
-|--------------------------------------------------------------------------
-*/
-const login = async (req, res) => {
+/* ============================================================
+   CREATE JWT TOKEN
+============================================================ */
+
+const createToken = (user) => {
+  return jwt.sign(
+    {
+      id: user._id,
+      employeeId: user.employeeId || null,
+      email: user.email,
+      role: user.role,
+    },
+    process.env.JWT_SECRET,
+    {
+      expiresIn: "1d",
+    }
+  );
+};
+
+/* ============================================================
+   ADMIN LOGIN
+============================================================ */
+
+const adminLogin = async (req, res) => {
   try {
     const { email, password } = req.body;
 
+    /* -----------------------------
+       VALIDATION
+    ----------------------------- */
+
     if (!email || !password) {
       return res.status(400).json({
-        message: "Email and password are required.",
+        success: false,
+        message: "Email and password are required",
       });
     }
 
-    const normalizedEmail = email.trim().toLowerCase();
+    const normalizedEmail = email.toLowerCase().trim();
 
-    const employee = await Employee.findOne({
+    /* -----------------------------
+       FIND ADMIN ONLY
+    ----------------------------- */
+
+    const admin = await Employee.findOne({
       email: normalizedEmail,
+      role: "admin",
     });
 
-    if (!employee) {
+    if (!admin) {
       return res.status(401).json({
-        message: "Invalid email or password.",
+        success: false,
+        message: "Invalid admin email or password",
       });
     }
 
-    if (employee.status !== "Active") {
-      return res.status(403).json({
-        message: "Your account is inactive. Please contact the administrator.",
-      });
-    }
+    /* -----------------------------
+       CHECK PASSWORD
+    ----------------------------- */
 
-    if (!employee.password) {
-      return res.status(401).json({
-        message: "Password is not configured for this account.",
+    if (!admin.password) {
+      return res.status(500).json({
+        success: false,
+        message: "Admin account does not have a password configured",
       });
     }
 
     const passwordMatch = await bcrypt.compare(
       password,
-      employee.password
+      admin.password
     );
 
     if (!passwordMatch) {
       return res.status(401).json({
-        message: "Invalid email or password.",
+        success: false,
+        message: "Invalid admin email or password",
       });
     }
 
-    const token = jwt.sign(
-      {
-        id: employee._id,
-        employeeId: employee.employeeId,
-        role: employee.role,
-      },
-      process.env.JWT_SECRET,
-      {
-        expiresIn: "1d",
-      }
-    );
+    /* -----------------------------
+       CREATE ADMIN TOKEN
+    ----------------------------- */
+
+    const token = createToken(admin);
+
+    /* -----------------------------
+       ADMIN RESPONSE
+    ----------------------------- */
 
     return res.status(200).json({
-      message: "Login successful.",
+      success: true,
+      message: "Admin login successful",
+
       token,
+
       user: {
-        id: employee._id,
-        employeeId: employee.employeeId,
-        firstName: employee.firstName,
-        lastName: employee.lastName,
-        email: employee.email,
-        department: employee.department,
-        position: employee.position,
-        role: employee.role,
-        status: employee.status,
+        id: admin._id,
+        employeeId: admin.employeeId || null,
+        firstName: admin.firstName || "",
+        lastName: admin.lastName || "",
+        email: admin.email,
+        department: admin.department || "",
+        position: admin.position || "",
+        phone: admin.phone || "",
+        role: "admin",
+        status: admin.status || "active",
       },
     });
   } catch (error) {
-    console.error("Login error:", error);
+    console.error("ADMIN LOGIN ERROR:", error);
 
     return res.status(500).json({
-      message: "Server error during login.",
+      success: false,
+      message: "Server error during admin login",
     });
   }
 };
 
+/* ============================================================
+   EMPLOYEE LOGIN
 
-/*
-|--------------------------------------------------------------------------
-| Employee Registration
-|--------------------------------------------------------------------------
-*/
-const register = async (req, res) => {
+   Employee must provide:
+   1. Employee ID
+   2. Email
+   3. Password
+
+   IMPORTANT:
+   Employee can ONLY login as role = employee.
+============================================================ */
+
+const employeeLogin = async (req, res) => {
   try {
     const {
-      name,
+      employeeId,
       email,
       password,
     } = req.body;
 
-    // Basic validation
-    if (!name || !email || !password) {
+    /* -----------------------------
+       VALIDATION
+    ----------------------------- */
+
+    if (!employeeId || !email || !password) {
       return res.status(400).json({
-        message: "Name, email and password are required.",
+        success: false,
+        message:
+          "Employee ID, email and password are required",
       });
     }
 
-    const trimmedName = name.trim();
-    const normalizedEmail = email.trim().toLowerCase();
+    const normalizedEmployeeId =
+      employeeId.trim();
 
-    if (!trimmedName) {
-      return res.status(400).json({
-        message: "Please enter your full name.",
-      });
-    }
+    const normalizedEmail =
+      email.toLowerCase().trim();
 
-    if (password.length < 6) {
-      return res.status(400).json({
-        message: "Password must contain at least 6 characters.",
-      });
-    }
+    /* -----------------------------
+       FIND EXACT EMPLOYEE
 
-    // Check whether email already exists
-    const existingEmployee = await Employee.findOne({
+       employeeId + email + role
+       must all match.
+    ----------------------------- */
+
+    const employee = await Employee.findOne({
+      employeeId: normalizedEmployeeId,
       email: normalizedEmail,
-    });
-
-    if (existingEmployee) {
-      return res.status(409).json({
-        message: "An employee with this email already exists.",
-      });
-    }
-
-    /*
-     * Split full name into first name and last name.
-     *
-     * Example:
-     * "Siddeshwar Srawan"
-     * firstName = Siddeshwar
-     * lastName  = Srawan
-     */
-    const nameParts = trimmedName.split(/\s+/);
-
-    const firstName = nameParts[0];
-
-    const lastName =
-      nameParts.length > 1
-        ? nameParts.slice(1).join(" ")
-        : "";
-
-    /*
-     * Generate Employee ID
-     *
-     * Example:
-     * EMP-1723981234567
-     */
-    const employeeId = `EMP-${Date.now()}`;
-
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    /*
-     * Create employee
-     *
-     * New registrations are always normal employees.
-     * They cannot register themselves as administrators.
-     */
-    const employee = await Employee.create({
-      employeeId,
-      firstName,
-      lastName,
-      email: normalizedEmail,
-
-      // Default values for self-registration
-      department: "General",
-      position: "Employee",
-
-      password: hashedPassword,
-
-      status: "Active",
       role: "employee",
     });
 
-    return res.status(201).json({
-      message: "Registration successful.",
-      employee: {
-        employeeId: employee.employeeId,
-        firstName: employee.firstName,
-        lastName: employee.lastName,
-        email: employee.email,
-        department: employee.department,
-        position: employee.position,
-        role: employee.role,
-        status: employee.status,
-      },
-    });
-  } catch (error) {
-    console.error("Registration error:", error);
-
-    // MongoDB duplicate-key error
-    if (error.code === 11000) {
-      return res.status(409).json({
-        message: "An employee with this information already exists.",
+    if (!employee) {
+      return res.status(401).json({
+        success: false,
+        message:
+          "Invalid employee ID, email or password",
       });
     }
 
+    /* -----------------------------
+       CHECK ACCOUNT STATUS
+    ----------------------------- */
+
+    const employeeStatus =
+      String(employee.status || "")
+        .toLowerCase()
+        .trim();
+
+    if (employeeStatus !== "active") {
+      return res.status(403).json({
+        success: false,
+        message:
+          "Your employee account is inactive. Please contact admin.",
+      });
+    }
+
+    /* -----------------------------
+       CHECK PASSWORD
+    ----------------------------- */
+
+    if (!employee.password) {
+      return res.status(500).json({
+        success: false,
+        message:
+          "Employee account does not have a password configured",
+      });
+    }
+
+    const passwordMatch =
+      await bcrypt.compare(
+        password,
+        employee.password
+      );
+
+    if (!passwordMatch) {
+      return res.status(401).json({
+        success: false,
+        message:
+          "Invalid employee ID, email or password",
+      });
+    }
+
+    /* -----------------------------
+       CREATE EMPLOYEE TOKEN
+    ----------------------------- */
+
+    const token = createToken(employee);
+
+    /* -----------------------------
+       EMPLOYEE RESPONSE
+
+       Only this employee's details
+       are returned.
+    ----------------------------- */
+
+    return res.status(200).json({
+      success: true,
+      message: "Employee login successful",
+
+      token,
+
+      user: {
+        id: employee._id,
+        employeeId: employee.employeeId,
+        firstName: employee.firstName || "",
+        lastName: employee.lastName || "",
+        email: employee.email,
+        department: employee.department || "",
+        position: employee.position || "",
+        phone: employee.phone || "",
+        role: "employee",
+        status: employee.status,
+        address: employee.address || "",
+      },
+    });
+  } catch (error) {
+    console.error(
+      "EMPLOYEE LOGIN ERROR:",
+      error
+    );
+
     return res.status(500).json({
-      message: "Server error during registration.",
+      success: false,
+      message:
+        "Server error during employee login",
     });
   }
 };
 
+/* ============================================================
+   GET CURRENT USER
+
+   IMPORTANT:
+   req.user.id comes from the verified JWT.
+
+   This means an employee cannot request another
+   employee's profile by changing an ID in the frontend.
+============================================================ */
+
+const getCurrentUser = async (req, res) => {
+  try {
+    /* -----------------------------
+       CHECK AUTH USER
+    ----------------------------- */
+
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({
+        success: false,
+        message: "Authentication required",
+      });
+    }
+
+    /* -----------------------------
+       GET ONLY JWT USER
+    ----------------------------- */
+
+    const user = await Employee.findById(
+      req.user.id
+    ).select("-password");
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    /* -----------------------------
+       SECURITY CHECK
+
+       If JWT says employee, return
+       employee's own record only.
+
+       There is NO find-all operation
+       here.
+    ----------------------------- */
+
+    return res.status(200).json({
+      success: true,
+      employee: user,
+    });
+  } catch (error) {
+    console.error(
+      "GET CURRENT USER ERROR:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+};
+
+/* ============================================================
+   EXPORT
+============================================================ */
 
 module.exports = {
-  login,
-  register,
+  adminLogin,
+  employeeLogin,
+  getCurrentUser,
 };

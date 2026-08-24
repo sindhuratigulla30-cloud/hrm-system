@@ -8,21 +8,57 @@ const {
   deleteDepartment,
 } = require("../controllers/departmentController");
 
-const authMiddleware = require("../middleware/authMiddleware");
-const allowRoles = require("../middleware/roleMiddleware");
+const {
+  protect,
+} = require("../middleware/authMiddleware");
+
+const {
+  allowRoles,
+} = require("../middleware/roleMiddleware");
 
 const router = express.Router();
 
-// Authentication required for all department routes
-router.use(authMiddleware);
+// ============================================================
+// AUTHENTICATION REQUIRED FOR ALL DEPARTMENT ROUTES
+// ============================================================
 
-// View departments
-router.get("/", getDepartments);
-router.get("/:id", getDepartment);
+router.use(protect);
 
-// Admin-only operations
-router.post("/", allowRoles("admin"), createDepartment);
-router.put("/:id", allowRoles("admin"), updateDepartment);
-router.delete("/:id", allowRoles("admin"), deleteDepartment);
+// ============================================================
+// VIEW DEPARTMENTS
+// Admin and Employee can VIEW departments
+// ============================================================
+
+router.get(
+  "/",
+  getDepartments
+);
+
+router.get(
+  "/:id",
+  getDepartment
+);
+
+// ============================================================
+// ADMIN ONLY OPERATIONS
+// ============================================================
+
+router.post(
+  "/",
+  allowRoles("admin"),
+  createDepartment
+);
+
+router.put(
+  "/:id",
+  allowRoles("admin"),
+  updateDepartment
+);
+
+router.delete(
+  "/:id",
+  allowRoles("admin"),
+  deleteDepartment
+);
 
 module.exports = router;

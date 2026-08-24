@@ -8,7 +8,9 @@ const {
   deletePayroll,
 } = require("../controllers/payrollController");
 
-const protect = require("../middleware/authMiddleware");
+const {
+  protect,
+} = require("../middleware/authMiddleware");
 
 const router = express.Router();
 
@@ -17,18 +19,38 @@ const router = express.Router();
 // ============================================================
 
 // Get all payroll records
-router.get("/", protect, getPayroll);
+router.get(
+  "/",
+  protect,
+  getPayroll
+);
 
 // Get single payroll record
-router.get("/:id", protect, getPayrollById);
+router.get(
+  "/:id",
+  protect,
+  getPayrollById
+);
 
 // Create payroll record
-router.post("/", protect, createPayroll);
+router.post(
+  "/",
+  protect,
+  createPayroll
+);
 
 // Update payroll record
-router.put("/:id", protect, updatePayroll);
+router.put(
+  "/:id",
+  protect,
+  updatePayroll
+);
 
 // Delete payroll record
-router.delete("/:id", protect, deletePayroll);
+router.delete(
+  "/:id",
+  protect,
+  deletePayroll
+);
 
 module.exports = router;
