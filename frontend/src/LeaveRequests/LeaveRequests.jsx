@@ -6,10 +6,10 @@ import {
   FaCheck,
   FaTimes,
   FaTrash,
+  FaUser,
 } from "react-icons/fa";
 
 import "./LeaveRequests.css";
-
 import { API_URL } from "../config";
 
 const emptyForm = {
@@ -27,9 +27,13 @@ function LeaveRequests({ employees = [], token }) {
 
   const [requests, setRequests] = useState([]);
   const [showModal, setShowModal] = useState(false);
+
   const [search, setSearch] = useState("");
+  const [selectedEmployee, setSelectedEmployee] = useState("");
+
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+
   const [form, setForm] = useState(emptyForm);
 
   // ============================================================
@@ -46,15 +50,10 @@ function LeaveRequests({ employees = [], token }) {
 
   const logoutUser = () => {
     localStorage.removeItem("token");
-
-    // Remove other common auth values if they exist
     localStorage.removeItem("user");
 
     alert("Your session has expired. Please login again.");
 
-    // Redirect to login page if your application has one.
-    // If there is no /login route, reload keeps the existing
-    // App.jsx structure unchanged.
     window.location.href = "/login";
   };
 
@@ -71,7 +70,11 @@ function LeaveRequests({ employees = [], token }) {
     }
 
     const headers = {
-      ...(options.body ? { "Content-Type": "application/json" } : {}),
+      ...(options.body
+        ? {
+            "Content-Type": "application/json",
+          }
+        : {}),
       ...(options.headers || {}),
       Authorization: `Bearer ${currentToken}`,
     };
@@ -81,7 +84,6 @@ function LeaveRequests({ employees = [], token }) {
       headers,
     });
 
-    // Token expired / invalid
     if (response.status === 401) {
       logoutUser();
       return null;
@@ -91,7 +93,7 @@ function LeaveRequests({ employees = [], token }) {
   };
 
   // ============================================================
-  // LOAD LEAVE REQUESTS - GET
+  // LOAD LEAVE REQUESTS
   // ============================================================
 
   const loadRequests = async () => {
@@ -113,7 +115,6 @@ function LeaveRequests({ employees = [], token }) {
         }
       );
 
-      // User was logged out because token was invalid
       if (!response) {
         return;
       }
@@ -132,12 +133,16 @@ function LeaveRequests({ employees = [], token }) {
           : []
       );
     } catch (error) {
-      console.error("Leave request loading error:", error);
+      console.error(
+        "Leave request loading error:",
+        error
+      );
 
       setRequests([]);
 
       alert(
-        error.message || "Unable to load leave requests."
+        error.message ||
+          "Unable to load leave requests."
       );
     } finally {
       setLoading(false);
@@ -155,6 +160,112 @@ function LeaveRequests({ employees = [], token }) {
       setLoading(false);
     }
   }, [token]);
+
+  // ============================================================
+  // FIND EMPLOYEE FOR A REQUEST
+  // ============================================================
+
+  const findEmployeeForRequest = (request) => {
+    if (!request) {
+      return null;
+    }
+
+    const requestEmployee =
+      request.employee || request.employeeDetails;
+
+    const possibleIds = [
+      request.employeeId,
+      requestEmployee?._id,
+      requestEmployee?.id,
+      requestEmployee?.employeeId,
+    ]
+      .filter(
+        (value) =>
+          value !== undefined &&
+          value !== null &&
+          value !== ""
+      )
+      .map((value) => String(value));
+
+    return (
+      employees.find((employee) => {
+        const employeeIds = [
+          employee._id,
+          employee.id,
+          employee.employeeId,
+        ]
+          .filter(
+            (value) =>
+              value !== undefined &&
+              value !== null &&
+              value !== ""
+          )
+          .map((value) => String(value));
+
+        return possibleIds.some((requestId) =>
+          employeeIds.includes(requestId)
+        );
+      }) || null
+    );
+  };
+
+  // ============================================================
+  // GET EMPLOYEE NAME
+  // ============================================================
+
+  const getEmployeeName = (request) => {
+    const employee = findEmployeeForRequest(request);
+
+    if (employee) {
+      const name =
+        `${employee.firstName || ""} ${
+          employee.lastName || ""
+        }`.trim();
+
+      if (name) {
+        return name;
+      }
+    }
+
+    if (request?.employeeName) {
+      return request.employeeName;
+    }
+
+    if (request?.employee) {
+      const name =
+        `${request.employee.firstName || ""} ${
+          request.employee.lastName || ""
+        }`.trim();
+
+      if (name) {
+        return name;
+      }
+    }
+
+    return "Unknown Employee";
+  };
+
+  // ============================================================
+  // GET EMPLOYEE CODE
+  // ============================================================
+
+  const getEmployeeCode = (request) => {
+    const employee = findEmployeeForRequest(request);
+
+    if (employee?.employeeId) {
+      return employee.employeeId;
+    }
+
+    if (request?.employee?.employeeId) {
+      return request.employee.employeeId;
+    }
+
+    if (request?.employeeId) {
+      return String(request.employeeId);
+    }
+
+    return "";
+  };
 
   // ============================================================
   // OPEN NEW LEAVE REQUEST MODAL
@@ -194,7 +305,7 @@ function LeaveRequests({ employees = [], token }) {
   };
 
   // ============================================================
-  // SUBMIT LEAVE REQUEST - POST
+  // SUBMIT LEAVE REQUEST
   // ============================================================
 
   const handleSubmit = async (event) => {
@@ -236,7 +347,6 @@ function LeaveRequests({ employees = [], token }) {
         }
       );
 
-      // Token expired / invalid
       if (!response) {
         return;
       }
@@ -278,7 +388,7 @@ function LeaveRequests({ employees = [], token }) {
   };
 
   // ============================================================
-  // UPDATE LEAVE REQUEST STATUS - PUT
+  // UPDATE LEAVE REQUEST STATUS
   // ============================================================
 
   const updateStatus = async (id, status) => {
@@ -302,7 +412,6 @@ function LeaveRequests({ employees = [], token }) {
         }
       );
 
-      // Token expired / invalid
       if (!response) {
         return;
       }
@@ -335,7 +444,7 @@ function LeaveRequests({ employees = [], token }) {
   };
 
   // ============================================================
-  // DELETE LEAVE REQUEST - DELETE
+  // DELETE LEAVE REQUEST
   // ============================================================
 
   const deleteRequest = async (id) => {
@@ -364,7 +473,6 @@ function LeaveRequests({ employees = [], token }) {
         }
       );
 
-      // Token expired / invalid
       if (!response) {
         return;
       }
@@ -403,21 +511,62 @@ function LeaveRequests({ employees = [], token }) {
   const filteredRequests = useMemo(() => {
     const text = search.trim().toLowerCase();
 
-    if (!text) {
-      return requests;
-    }
-
     return requests.filter((request) => {
+      const employee =
+        findEmployeeForRequest(request);
+
+      const employeeName =
+        getEmployeeName(request);
+
+      const employeeCode =
+        getEmployeeCode(request);
+
+      // Employee dropdown filter
+      const matchesEmployee =
+        !selectedEmployee ||
+        (
+          employee &&
+          [
+            employee._id,
+            employee.id,
+            employee.employeeId,
+          ]
+            .filter(
+              (value) =>
+                value !== undefined &&
+                value !== null &&
+                value !== ""
+            )
+            .map((value) => String(value))
+            .includes(String(selectedEmployee))
+        ) ||
+        String(request.employeeId || "") ===
+          String(selectedEmployee);
+
+      // Search filter
       const searchText = `
-        ${request.employeeName || ""}
+        ${employeeName}
+        ${employeeCode}
+        ${request.employeeId || ""}
         ${request.leaveType || ""}
         ${request.status || ""}
         ${request.reason || ""}
       `.toLowerCase();
 
-      return searchText.includes(text);
+      const matchesSearch =
+        !text || searchText.includes(text);
+
+      return (
+        matchesEmployee &&
+        matchesSearch
+      );
     });
-  }, [requests, search]);
+  }, [
+    requests,
+    employees,
+    search,
+    selectedEmployee,
+  ]);
 
   // ============================================================
   // FORMAT DATE
@@ -428,7 +577,13 @@ function LeaveRequests({ employees = [], token }) {
       return "-";
     }
 
-    return new Date(value).toLocaleDateString(
+    const date = new Date(value);
+
+    if (Number.isNaN(date.getTime())) {
+      return "-";
+    }
+
+    return date.toLocaleDateString(
       "en-IN",
       {
         day: "2-digit",
@@ -439,13 +594,24 @@ function LeaveRequests({ employees = [], token }) {
   };
 
   // ============================================================
+  // CLEAR FILTERS
+  // ============================================================
+
+  const clearFilters = () => {
+    setSelectedEmployee("");
+    setSearch("");
+  };
+
+  // ============================================================
   // RENDER
   // ============================================================
 
   return (
     <div className="leave-page">
 
-      {/* PAGE HEADER */}
+      {/* ======================================================
+          PAGE HEADER
+          ====================================================== */}
 
       <header className="leave-header">
         <div>
@@ -470,7 +636,9 @@ function LeaveRequests({ employees = [], token }) {
         </button>
       </header>
 
-      {/* STATISTICS */}
+      {/* ======================================================
+          STATISTICS
+          ====================================================== */}
 
       <section className="leave-stats">
 
@@ -489,7 +657,9 @@ function LeaveRequests({ employees = [], token }) {
             {
               requests.filter(
                 (request) =>
-                  request.status === "Pending"
+                  String(
+                    request.status || ""
+                  ).toLowerCase() === "pending"
               ).length
             }
           </strong>
@@ -502,7 +672,9 @@ function LeaveRequests({ employees = [], token }) {
             {
               requests.filter(
                 (request) =>
-                  request.status === "Approved"
+                  String(
+                    request.status || ""
+                  ).toLowerCase() === "approved"
               ).length
             }
           </strong>
@@ -515,7 +687,9 @@ function LeaveRequests({ employees = [], token }) {
             {
               requests.filter(
                 (request) =>
-                  request.status === "Rejected"
+                  String(
+                    request.status || ""
+                  ).toLowerCase() === "rejected"
               ).length
             }
           </strong>
@@ -523,15 +697,17 @@ function LeaveRequests({ employees = [], token }) {
 
       </section>
 
-      {/* LEAVE REQUEST TABLE */}
+      {/* ======================================================
+          LEAVE REQUEST TABLE
+          ====================================================== */}
 
       <section className="leave-card">
 
         <div className="leave-toolbar">
 
-          <div>
+          <div className="leave-toolbar-title">
             <h2>
-              Leave Requests
+              Leave Management
             </h2>
 
             <p>
@@ -539,20 +715,92 @@ function LeaveRequests({ employees = [], token }) {
             </p>
           </div>
 
-          <div className="leave-search">
-            <FaSearch />
+          <div className="leave-toolbar-actions">
 
-            <input
-              type="text"
-              value={search}
-              onChange={(event) =>
-                setSearch(event.target.value)
-              }
-              placeholder="Search leave requests..."
-            />
+            {/* EMPLOYEE FILTER */}
+
+            <div className="leave-employee-filter">
+
+              <FaUser className="leave-filter-icon" />
+
+              <select
+                value={selectedEmployee}
+                onChange={(event) =>
+                  setSelectedEmployee(
+                    event.target.value
+                  )
+                }
+              >
+                <option value="">
+                  All Employees
+                </option>
+
+                {employees.map(
+                  (employee) => (
+                    <option
+                      key={
+                        employee._id ||
+                        employee.id ||
+                        employee.employeeId
+                      }
+                      value={
+                        employee._id ||
+                        employee.id ||
+                        employee.employeeId
+                      }
+                    >
+                      {employee.firstName || ""}{" "}
+                      {employee.lastName || ""}
+                      {employee.employeeId
+                        ? ` (${employee.employeeId})`
+                        : ""}
+                    </option>
+                  )
+                )}
+              </select>
+
+            </div>
+
+            {/* SEARCH */}
+
+            <div className="leave-search">
+
+              <FaSearch />
+
+              <input
+                type="text"
+                value={search}
+                onChange={(event) =>
+                  setSearch(
+                    event.target.value
+                  )
+                }
+                placeholder="Search leave requests..."
+              />
+
+            </div>
+
+            {/* CLEAR FILTER */}
+
+            {(selectedEmployee || search) && (
+              <button
+                type="button"
+                className="leave-clear-filter"
+                onClick={clearFilters}
+                title="Clear filters"
+              >
+                <FaTimes />
+                Clear
+              </button>
+            )}
+
           </div>
 
         </div>
+
+        {/* ====================================================
+            TABLE
+            ==================================================== */}
 
         <div className="leave-table-wrapper">
 
@@ -572,18 +820,25 @@ function LeaveRequests({ employees = [], token }) {
 
             <tbody>
 
-              {loading ? (
+              {/* LOADING */}
 
+              {loading ? (
                 <tr>
                   <td
                     colSpan="7"
                     className="leave-empty"
                   >
-                    Loading leave requests...
+                    <FaClipboardList />
+
+                    <strong>
+                      Loading leave requests...
+                    </strong>
                   </td>
                 </tr>
 
               ) : filteredRequests.length === 0 ? (
+
+                /* NO DATA */
 
                 <tr>
                   <td
@@ -597,119 +852,172 @@ function LeaveRequests({ employees = [], token }) {
                     </strong>
 
                     <span>
-                      Click "New Leave Request" to add one.
+                      {selectedEmployee || search
+                        ? "Try changing your filters."
+                        : 'Click "New Leave Request" to add one.'}
                     </span>
                   </td>
                 </tr>
 
               ) : (
 
+                /* DATA */
+
                 filteredRequests.map(
-                  (request) => (
+                  (request) => {
+                    const employee =
+                      findEmployeeForRequest(
+                        request
+                      );
 
-                    <tr
-                      key={request._id}
-                    >
+                    const employeeName =
+                      getEmployeeName(
+                        request
+                      );
 
-                      <td>
-                        <strong>
-                          {request.employeeName ||
-                            "Unknown Employee"}
-                        </strong>
-                      </td>
+                    const employeeCode =
+                      getEmployeeCode(
+                        request
+                      );
 
-                      <td>
-                        {request.leaveType}
-                      </td>
+                    const employeeInitial =
+                      employeeName
+                        .charAt(0)
+                        .toUpperCase();
 
-                      <td>
-                        {formatDate(
-                          request.startDate
-                        )}
-                      </td>
+                    const status =
+                      request.status ||
+                      "Pending";
 
-                      <td>
-                        {formatDate(
-                          request.endDate
-                        )}
-                      </td>
+                    const normalizedStatus =
+                      String(status)
+                        .toLowerCase();
 
-                      <td className="leave-reason">
-                        {request.reason || "-"}
-                      </td>
+                    return (
+                      <tr
+                        key={request._id}
+                      >
 
-                      <td>
-                        <span
-                          className={`leave-status ${
-                            String(
-                              request.status || ""
-                            ).toLowerCase()
-                          }`}
-                        >
-                          {request.status ||
-                            "Pending"}
-                        </span>
-                      </td>
+                        {/* EMPLOYEE */}
 
-                      <td>
+                        <td>
+                          <div className="leave-employee-cell">
 
-                        <div className="leave-actions">
+                            <div className="leave-employee-avatar">
+                              {employeeInitial || "E"}
+                            </div>
 
-                          {request.status ===
-                            "Pending" && (
-                            <>
-                              <button
-                                type="button"
-                                className="leave-action approve"
-                                title="Approve"
-                                onClick={() =>
-                                  updateStatus(
-                                    request._id,
-                                    "Approved"
-                                  )
-                                }
-                              >
-                                <FaCheck />
-                              </button>
+                            <div className="leave-employee-info">
+                              <strong>
+                                {employeeName}
+                              </strong>
 
-                              <button
-                                type="button"
-                                className="leave-action reject"
-                                title="Reject"
-                                onClick={() =>
-                                  updateStatus(
-                                    request._id,
-                                    "Rejected"
-                                  )
-                                }
-                              >
-                                <FaTimes />
-                              </button>
-                            </>
+                              <span>
+                                {employeeCode || "Employee"}
+                              </span>
+                            </div>
+
+                          </div>
+                        </td>
+
+                        {/* LEAVE TYPE */}
+
+                        <td>
+                          {request.leaveType || "-"}
+                        </td>
+
+                        {/* START DATE */}
+
+                        <td>
+                          {formatDate(
+                            request.startDate
                           )}
+                        </td>
 
-                          <button
-                            type="button"
-                            className="leave-action delete"
-                            title="Delete"
-                            onClick={() =>
-                              deleteRequest(
-                                request._id
-                              )
-                            }
+                        {/* END DATE */}
+
+                        <td>
+                          {formatDate(
+                            request.endDate
+                          )}
+                        </td>
+
+                        {/* REASON */}
+
+                        <td className="leave-reason">
+                          {request.reason || "-"}
+                        </td>
+
+                        {/* STATUS */}
+
+                        <td>
+                          <span
+                            className={`leave-status ${normalizedStatus}`}
                           >
-                            <FaTrash />
-                          </button>
+                            {status}
+                          </span>
+                        </td>
 
-                        </div>
+                        {/* ACTIONS */}
 
-                      </td>
+                        <td>
 
-                    </tr>
+                          <div className="leave-actions">
 
-                  )
+                            {normalizedStatus ===
+                              "pending" && (
+                              <>
+                                <button
+                                  type="button"
+                                  className="leave-action approve"
+                                  title="Approve"
+                                  onClick={() =>
+                                    updateStatus(
+                                      request._id,
+                                      "Approved"
+                                    )
+                                  }
+                                >
+                                  <FaCheck />
+                                </button>
+
+                                <button
+                                  type="button"
+                                  className="leave-action reject"
+                                  title="Reject"
+                                  onClick={() =>
+                                    updateStatus(
+                                      request._id,
+                                      "Rejected"
+                                    )
+                                  }
+                                >
+                                  <FaTimes />
+                                </button>
+                              </>
+                            )}
+
+                            <button
+                              type="button"
+                              className="leave-action delete"
+                              title="Delete"
+                              onClick={() =>
+                                deleteRequest(
+                                  request._id
+                                )
+                              }
+                            >
+                              <FaTrash />
+                            </button>
+
+                          </div>
+
+                        </td>
+
+                      </tr>
+                    );
+                  }
                 )
-
               )}
 
             </tbody>
@@ -720,7 +1028,9 @@ function LeaveRequests({ employees = [], token }) {
 
       </section>
 
-      {/* NEW LEAVE REQUEST MODAL */}
+      {/* ======================================================
+          NEW LEAVE REQUEST MODAL
+          ====================================================== */}
 
       {showModal && (
 
@@ -738,6 +1048,8 @@ function LeaveRequests({ employees = [], token }) {
               event.stopPropagation()
             }
           >
+
+            {/* MODAL HEADER */}
 
             <div className="leave-modal-header">
 
@@ -791,7 +1103,6 @@ function LeaveRequests({ employees = [], token }) {
 
                   {employees.map(
                     (employee) => (
-
                       <option
                         key={
                           employee._id ||
@@ -808,7 +1119,6 @@ function LeaveRequests({ employees = [], token }) {
                         {employee.employeeId}
                         )
                       </option>
-
                     )
                   )}
 
@@ -942,7 +1252,6 @@ function LeaveRequests({ employees = [], token }) {
           </div>
 
         </div>
-
       )}
 
     </div>

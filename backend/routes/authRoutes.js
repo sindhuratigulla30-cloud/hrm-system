@@ -1,45 +1,44 @@
 const express = require("express");
 
 const {
-  adminLogin,
-  employeeLogin,
+  registerEmployee,
+  login,
   getCurrentUser,
 } = require("../controllers/authController");
 
-const { protect } = require("../middleware/authMiddleware");
+const {
+  protect,
+} = require("../middleware/authMiddleware");
 
 const router = express.Router();
 
-/*
-====================================================
-ADMIN LOGIN
-POST /api/auth/login
-====================================================
-*/
+// ============================================================
+// EMPLOYEE REGISTRATION
+// POST /api/auth/register
+// ============================================================
+
+router.post(
+  "/register",
+  registerEmployee
+);
+
+// ============================================================
+// COMMON LOGIN
+// POST /api/auth/login
+//
+// HR/Admin + Employee
+// Backend automatically identifies role.
+// ============================================================
 
 router.post(
   "/login",
-  adminLogin
+  login
 );
 
-/*
-====================================================
-EMPLOYEE LOGIN
-POST /api/auth/employee-login
-====================================================
-*/
-
-router.post(
-  "/employee-login",
-  employeeLogin
-);
-
-/*
-====================================================
-GET CURRENT LOGGED-IN USER
-GET /api/auth/me
-====================================================
-*/
+// ============================================================
+// CURRENT LOGGED-IN USER
+// GET /api/auth/me
+// ============================================================
 
 router.get(
   "/me",

@@ -2,11 +2,16 @@ const jwt = require("jsonwebtoken");
 const Employee = require("../models/Employee");
 
 // ============================================================
-// PROTECT
+// PROTECT MIDDLEWARE
+// Verifies JWT and loads the latest user from MongoDB
 // ============================================================
 
 const protect = async (req, res, next) => {
   try {
+    // --------------------------------------------------------
+    // CHECK AUTHORIZATION HEADER
+    // --------------------------------------------------------
+
     const authHeader = req.headers.authorization;
 
     if (!authHeader) {
@@ -16,6 +21,10 @@ const protect = async (req, res, next) => {
       });
     }
 
+    // --------------------------------------------------------
+    // CHECK BEARER FORMAT
+    // --------------------------------------------------------
+
     if (!authHeader.startsWith("Bearer ")) {
       return res.status(401).json({
         success: false,
@@ -23,7 +32,11 @@ const protect = async (req, res, next) => {
       });
     }
 
-    const token = authHeader.split(" ")[1];
+    // --------------------------------------------------------
+    // GET TOKEN
+    // --------------------------------------------------------
+
+    const token = authHeader.substring(7).trim();
 
     if (!token) {
       return res.status(401).json({
@@ -32,9 +45,22 @@ const protect = async (req, res, next) => {
       });
     }
 
-    // ========================================================
-    // VERIFY TOKEN
-    // ========================================================
+    // --------------------------------------------------------
+    // CHECK JWT SECRET
+    // --------------------------------------------------------
+
+    if (!process.env.JWT_SECRET) {
+      console.error("JWT_SECRET is not configured.");
+
+      return res.status(500).json({
+        success: false,
+        message: "Server authentication configuration error.",
+      });
+    }
+
+    // --------------------------------------------------------
+    // VERIFY JWT
+    // --------------------------------------------------------
 
     const decoded = jwt.verify(
       token,
@@ -48,9 +74,12 @@ const protect = async (req, res, next) => {
       });
     }
 
-    // ========================================================
-    // FIND USER FROM JWT ID
-    // ========================================================
+    // --------------------------------------------------------
+    // LOAD LATEST USER FROM DATABASE
+    // IMPORTANT:
+    // Never trust role/status from the frontend.
+    // Always get the latest values from MongoDB.
+    // --------------------------------------------------------
 
     const user = await Employee.findById(
       decoded.id
@@ -63,36 +92,48 @@ const protect = async (req, res, next) => {
       });
     }
 
-    // ========================================================
-    // CHECK EMPLOYEE STATUS
-    // ========================================================
+    // --------------------------------------------------------
+    // CHECK ACCOUNT STATUS
+    // --------------------------------------------------------
 
-    if (
-      user.role === "employee" &&
-      user.status !== "active"
-    ) {
+    const userStatus = String(
+      user.status || ""
+    )
+      .trim()
+      .toLowerCase();
+
+    if (userStatus !== "active") {
       return res.status(403).json({
         success: false,
         message:
-          "Your employee account is inactive. Please contact admin.",
+          "Your account is inactive. Please contact HR/Admin.",
       });
     }
 
-    // ========================================================
-    // STORE USER
-    // ========================================================
+    // --------------------------------------------------------
+    // STORE AUTHENTICATED USER
+    // --------------------------------------------------------
 
     req.user = user;
 
-    // Also keep decoded JWT
+    // Keep decoded JWT available separately
     req.userToken = decoded;
 
+    // --------------------------------------------------------
+    // CONTINUE
+    // --------------------------------------------------------
+
     next();
+
   } catch (error) {
     console.error(
       "AUTHENTICATION ERROR:",
       error.message
     );
+
+    // --------------------------------------------------------
+    // EXPIRED TOKEN
+    // --------------------------------------------------------
 
     if (error.name === "TokenExpiredError") {
       return res.status(401).json({
@@ -102,6 +143,10 @@ const protect = async (req, res, next) => {
       });
     }
 
+    // --------------------------------------------------------
+    // INVALID JWT
+    // --------------------------------------------------------
+
     if (error.name === "JsonWebTokenError") {
       return res.status(401).json({
         success: false,
@@ -109,6 +154,22 @@ const protect = async (req, res, next) => {
           "Invalid authentication token.",
       });
     }
+
+    // --------------------------------------------------------
+    // INVALID TOKEN FORMAT
+    // --------------------------------------------------------
+
+    if (error.name === "NotBeforeError") {
+      return res.status(401).json({
+        success: false,
+        message:
+          "Authentication token is not active yet.",
+      });
+    }
+
+    // --------------------------------------------------------
+    // OTHER AUTHENTICATION ERROR
+    // --------------------------------------------------------
 
     return res.status(401).json({
       success: false,
@@ -118,18 +179,33 @@ const protect = async (req, res, next) => {
   }
 };
 
+
 // ============================================================
-// ALLOW ROLES
+// ALLOW SPECIFIC ROLES
+//
+// Example:
+// allowRoles("admin")
+// allowRoles("employee")
+// allowRoles("admin", "employee")
 // ============================================================
 
 const allowRoles = (...roles) => {
   return (req, res, next) => {
+
+    // --------------------------------------------------------
+    // USER MUST BE AUTHENTICATED
+    // --------------------------------------------------------
+
     if (!req.user) {
       return res.status(401).json({
         success: false,
         message: "Authentication required.",
       });
     }
+
+    // --------------------------------------------------------
+    // CHECK ROLE
+    // --------------------------------------------------------
 
     if (!roles.includes(req.user.role)) {
       return res.status(403).json({
@@ -139,15 +215,25 @@ const allowRoles = (...roles) => {
       });
     }
 
+    // --------------------------------------------------------
+    // ROLE ALLOWED
+    // --------------------------------------------------------
+
     next();
   };
 };
+
 
 // ============================================================
 // ADMIN ONLY
 // ============================================================
 
 const requireAdmin = (req, res, next) => {
+
+  // --------------------------------------------------------
+  // AUTHENTICATION CHECK
+  // --------------------------------------------------------
+
   if (!req.user) {
     return res.status(401).json({
       success: false,
@@ -155,21 +241,36 @@ const requireAdmin = (req, res, next) => {
     });
   }
 
+  // --------------------------------------------------------
+  // ADMIN ROLE CHECK
+  // --------------------------------------------------------
+
   if (req.user.role !== "admin") {
     return res.status(403).json({
       success: false,
-      message: "Admin access required.",
+      message:
+        "Admin access required.",
     });
   }
 
+  // --------------------------------------------------------
+  // ADMIN ALLOWED
+  // --------------------------------------------------------
+
   next();
 };
+
 
 // ============================================================
 // EMPLOYEE ONLY
 // ============================================================
 
 const requireEmployee = (req, res, next) => {
+
+  // --------------------------------------------------------
+  // AUTHENTICATION CHECK
+  // --------------------------------------------------------
+
   if (!req.user) {
     return res.status(401).json({
       success: false,
@@ -177,15 +278,25 @@ const requireEmployee = (req, res, next) => {
     });
   }
 
+  // --------------------------------------------------------
+  // EMPLOYEE ROLE CHECK
+  // --------------------------------------------------------
+
   if (req.user.role !== "employee") {
     return res.status(403).json({
       success: false,
-      message: "Employee access required.",
+      message:
+        "Employee access required.",
     });
   }
 
+  // --------------------------------------------------------
+  // EMPLOYEE ALLOWED
+  // --------------------------------------------------------
+
   next();
 };
+
 
 // ============================================================
 // EXPORT

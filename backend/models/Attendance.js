@@ -2,65 +2,46 @@ const mongoose = require("mongoose");
 
 const attendanceSchema = new mongoose.Schema(
   {
-    // ============================================================
-    // EMPLOYEE
-    // ============================================================
-
-    employeeId: {
+    employee: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Employee",
       required: true,
     },
 
-    // ============================================================
-    // ATTENDANCE DATE
-    // ============================================================
+    employeeId: {
+      type: String,
+      required: true,
+    },
+
+    employeeName: {
+      type: String,
+      required: true,
+    },
 
     date: {
       type: String,
       required: true,
     },
 
-    // ============================================================
-    // LOGIN / CHECK-IN TIME
-    // ============================================================
-
-    loginTime: {
-      type: Date,
-      default: null,
-    },
-
-    // ============================================================
-    // LOGOUT / CHECK-OUT TIME
-    // ============================================================
-
-    logoutTime: {
-      type: Date,
-      default: null,
-    },
-
-    // ============================================================
-    // TOTAL WORKING HOURS
-    // ============================================================
-
-    workingHours: {
-      type: Number,
-      default: 0,
-    },
-
-    // ============================================================
-    // ATTENDANCE STATUS
-    // ============================================================
-
     status: {
       type: String,
-      enum: [
-        "Present",
-        "Absent",
-        "Half Day",
-        "Leave",
-      ],
+      enum: ["Present", "Late", "Absent"],
       default: "Present",
+    },
+
+    checkIn: {
+      type: String,
+      default: "-",
+    },
+
+    checkOut: {
+      type: String,
+      default: "-",
+    },
+
+    workingHours: {
+      type: String,
+      default: "0h 0m",
     },
   },
   {
@@ -68,18 +49,9 @@ const attendanceSchema = new mongoose.Schema(
   }
 );
 
-// ============================================================
-// PREVENT DUPLICATE ATTENDANCE FOR SAME EMPLOYEE + DATE
-// ============================================================
-
 attendanceSchema.index(
-  {
-    employeeId: 1,
-    date: 1,
-  },
-  {
-    unique: true,
-  }
+  { employee: 1, date: 1 },
+  { unique: true }
 );
 
 module.exports = mongoose.model(

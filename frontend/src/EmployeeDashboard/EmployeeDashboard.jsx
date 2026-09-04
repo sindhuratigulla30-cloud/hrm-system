@@ -133,44 +133,60 @@ function EmployeeDashboard({
      LOAD ATTENDANCE
   ============================================================ */
 
-  const loadAttendance = async () => {
-    if (!token) return;
+    const loadAttendance = async () => {
+  if (!token) return;
 
-    setLoading(true);
+  setLoading(true);
 
-    try {
-      const response = await axios.get(
-        `${apiUrl}/api/attendance/my-attendance`,
-        authConfig
-      );
+  try {
+    const response = await axios.get(
+      `${apiUrl}/api/attendance/my`,
+      authConfig
+    );
 
-      const data =
-        response.data?.attendance ||
-        response.data?.records ||
-        response.data?.data ||
-        response.data ||
-        [];
+    console.log(
+      "EMPLOYEE ATTENDANCE RESPONSE:",
+      response.data
+    );
 
-      const records = Array.isArray(data) ? data : [];
+    const data =
+      response.data?.attendance ||
+      response.data?.records ||
+      response.data?.data ||
+      response.data ||
+      [];
 
-      setAttendanceHistory(records);
+    const records = Array.isArray(data)
+      ? data
+      : [];
 
-      const todayRecord =
-        records.find((record) => isToday(record?.date)) || null;
+    setAttendanceHistory(records);
 
-      setTodayAttendance(todayRecord);
-    } catch (error) {
-      console.error(
-        "Employee attendance loading error:",
-        error
-      );
+    const todayRecord =
+      records.find(
+        (record) => isToday(record?.date)
+      ) || null;
 
-      setAttendanceHistory([]);
-      setTodayAttendance(null);
-    } finally {
-      setLoading(false);
-    }
-  };
+    setTodayAttendance(todayRecord);
+
+  } catch (error) {
+    console.error(
+      "Employee attendance loading error:",
+      error
+    );
+
+    console.error(
+      "Attendance server response:",
+      error.response?.data
+    );
+
+    setAttendanceHistory([]);
+    setTodayAttendance(null);
+
+  } finally {
+    setLoading(false);
+  }
+};
 
   /* ============================================================
      INITIAL LOAD

@@ -1,0 +1,684 @@
+.employee-register-page {
+  min-height: 100vh;
+  width: 100%;
+  padding: 40px 20px;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  box-sizing: border-box;
+
+  background:
+    radial-gradient(
+      circle at top left,
+      rgba(37, 99, 235, 0.10),
+      transparent 32%
+    ),
+    radial-gradient(
+      circle at bottom right,
+      rgba(79, 70, 229, 0.10),
+      transparent 32%
+    ),
+    #f4f7fc;
+}
+
+/* ============================================================
+   MAIN CARD
+============================================================ */
+
+.employee-register-card {
+  position: relative;
+  width: 100%;
+  max-width: 900px;
+  margin: 20px auto;
+  padding: 48px;
+  box-sizing: border-box;
+
+  background: #ffffff;
+  border-radius: 28px;
+
+  box-shadow:
+    0 25px 60px rgba(15, 23, 42, 0.10),
+    0 5px 20px rgba(15, 23, 42, 0.05);
+
+  overflow: hidden;
+}
+
+.employee-register-top-line {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 6px;
+
+  background:
+    linear-gradient(
+      90deg,
+      #2563eb,
+      #4f46e5
+    );
+}
+
+/* ============================================================
+   HEADER
+============================================================ */
+
+.employee-register-header {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  margin-bottom: 30px;
+}
+
+.employee-register-icon {
+  width: 76px;
+  height: 76px;
+  flex-shrink: 0;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 21px;
+
+  background:
+    linear-gradient(
+      135deg,
+      #2563eb,
+      #4f46e5
+    );
+
+  color: #ffffff;
+  font-size: 30px;
+
+  box-shadow:
+    0 12px 25px rgba(37, 99, 235, 0.22);
+}
+
+.employee-register-header h1 {
+  margin: 0 0 7px;
+
+  color: #071a3d;
+
+  font-size: 31px;
+  font-weight: 800;
+
+  letter-spacing: -0.6px;
+}
+
+.employee-register-header p {
+  margin: 0;
+
+  color: #64748b;
+  font-size: 15px;
+}
+
+/* ============================================================
+   INFORMATION
+============================================================ */
+
+.employee-register-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  margin-bottom: 28px;
+  padding: 13px 16px;
+
+  border: 1px solid #bfdbfe;
+  border-radius: 12px;
+
+  background: #eff6ff;
+  color: #1d4ed8;
+
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.employee-register-info svg {
+  flex-shrink: 0;
+}
+
+/* ============================================================
+   ERROR
+============================================================ */
+
+.employee-register-error {
+  margin-bottom: 24px;
+  padding: 13px 15px;
+
+  border: 1px solid #fecaca;
+  border-radius: 11px;
+
+  background: #fef2f2;
+  color: #b91c1c;
+
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+/* ============================================================
+   SECTION TITLE
+============================================================ */
+
+.register-section-title {
+  display: flex;
+  align-items: flex-start;
+  gap: 15px;
+
+  margin: 35px 0 20px;
+}
+
+.register-section-title > span {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 10px;
+
+  background: #eff6ff;
+  color: #2563eb;
+
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.register-section-title h2 {
+  margin: 0 0 4px;
+
+  color: #172554;
+
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.register-section-title p {
+  margin: 0;
+
+  color: #94a3b8;
+  font-size: 13px;
+}
+
+/* ============================================================
+   GRID
+============================================================ */
+
+.register-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 22px;
+}
+
+/* ============================================================
+   FIELD
+============================================================ */
+
+.register-field {
+  width: 100%;
+}
+
+.register-full-field {
+  margin-top: 22px;
+}
+
+.register-field label {
+  display: block;
+  margin-bottom: 9px;
+
+  color: #172554;
+
+  font-size: 14px;
+  font-weight: 700;
+}
+
+/* ============================================================
+   INPUT
+============================================================ */
+
+.register-input-wrapper {
+  position: relative;
+
+  display: flex;
+  align-items: center;
+}
+
+.register-input-wrapper > svg {
+  position: absolute;
+  left: 16px;
+
+  color: #64748b;
+  font-size: 16px;
+
+  pointer-events: none;
+}
+
+.register-input-wrapper input {
+  width: 100%;
+  height: 56px;
+
+  padding: 0 16px 0 46px;
+
+  box-sizing: border-box;
+
+  border: 1px solid #d5e0f0;
+  border-radius: 13px;
+
+  background: #f8fbff;
+
+  color: #172033;
+
+  font-size: 15px;
+
+  outline: none;
+
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease;
+}
+
+.register-input-wrapper input::placeholder {
+  color: #94a3b8;
+}
+
+.register-input-wrapper input:focus {
+  background: #ffffff;
+
+  border-color: #3b82f6;
+
+  box-shadow:
+    0 0 0 4px rgba(59, 130, 246, 0.10);
+}
+
+/* ============================================================
+   PASSWORD TOGGLE
+============================================================ */
+
+.register-password-toggle {
+  position: absolute;
+  right: 10px;
+
+  width: 38px;
+  height: 38px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border: none;
+  border-radius: 8px;
+
+  background: transparent;
+  color: #64748b;
+
+  cursor: pointer;
+
+  font-size: 17px;
+
+  transition:
+    color 0.2s ease,
+    background 0.2s ease;
+}
+
+.register-password-toggle:hover {
+  color: #2563eb;
+  background: #eff6ff;
+}
+
+/* ============================================================
+   SUBMIT BUTTON
+============================================================ */
+
+.employee-register-submit {
+  width: 100%;
+  height: 62px;
+
+  margin-top: 38px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 11px;
+
+  border: none;
+  border-radius: 14px;
+
+  background:
+    linear-gradient(
+      135deg,
+      #2563eb,
+      #4f46e5
+    );
+
+  color: #ffffff;
+
+  font-size: 16px;
+  font-weight: 800;
+
+  cursor: pointer;
+
+  box-shadow:
+    0 12px 25px rgba(37, 99, 235, 0.20);
+
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    opacity 0.2s ease;
+}
+
+.employee-register-submit:hover:not(:disabled) {
+  transform: translateY(-2px);
+
+  box-shadow:
+    0 16px 30px rgba(37, 99, 235, 0.28);
+}
+
+.employee-register-submit:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.register-spinner {
+  animation: registerSpin 1s linear infinite;
+}
+
+@keyframes registerSpin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ============================================================
+   FOOTER
+============================================================ */
+
+.employee-register-footer {
+  margin-top: 25px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+
+  color: #64748b;
+
+  font-size: 14px;
+}
+
+.employee-register-footer button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+
+  border: none;
+  background: transparent;
+
+  color: #2563eb;
+
+  font-size: 14px;
+  font-weight: 800;
+
+  cursor: pointer;
+}
+
+.employee-register-footer button:hover {
+  text-decoration: underline;
+}
+
+/* ============================================================
+   SUCCESS PAGE
+============================================================ */
+
+.employee-register-success-card {
+  width: 100%;
+  max-width: 600px;
+
+  margin: 50px auto;
+  padding: 50px 45px;
+
+  box-sizing: border-box;
+
+  background: #ffffff;
+
+  border-radius: 28px;
+
+  text-align: center;
+
+  box-shadow:
+    0 25px 60px rgba(15, 23, 42, 0.10);
+}
+
+.employee-register-success-icon {
+  width: 86px;
+  height: 86px;
+
+  margin: 0 auto 24px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 50%;
+
+  background: #ecfdf5;
+  color: #16a34a;
+
+  font-size: 43px;
+}
+
+.employee-register-success-card h1 {
+  margin: 0;
+
+  color: #071a3d;
+
+  font-size: 30px;
+  font-weight: 800;
+}
+
+.success-description {
+  margin: 12px 0 28px;
+
+  color: #64748b;
+  font-size: 15px;
+}
+
+/* ============================================================
+   EMPLOYEE ID
+============================================================ */
+
+.employee-id-card {
+  padding: 22px;
+
+  border: 1px solid #bfdbfe;
+  border-radius: 16px;
+
+  background: #eff6ff;
+}
+
+.employee-id-card span {
+  display: block;
+
+  margin-bottom: 8px;
+
+  color: #64748b;
+
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.employee-id-card strong {
+  display: block;
+
+  color: #1d4ed8;
+
+  font-size: 32px;
+  letter-spacing: 1px;
+}
+
+.employee-id-card small {
+  display: block;
+
+  margin-top: 8px;
+
+  color: #64748b;
+  font-size: 12px;
+}
+
+/* ============================================================
+   SUCCESS DETAILS
+============================================================ */
+
+.success-details {
+  margin: 24px 0;
+
+  display: grid;
+  gap: 12px;
+}
+
+.success-details div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  padding: 13px 15px;
+
+  border-radius: 10px;
+
+  background: #f8fafc;
+}
+
+.success-details span {
+  color: #64748b;
+  font-size: 13px;
+}
+
+.success-details strong {
+  color: #172554;
+  font-size: 13px;
+}
+
+/* ============================================================
+   SUCCESS BUTTON
+============================================================ */
+
+.success-login-button {
+  width: 100%;
+  height: 58px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+
+  border: none;
+  border-radius: 13px;
+
+  background:
+    linear-gradient(
+      135deg,
+      #2563eb,
+      #4f46e5
+    );
+
+  color: #ffffff;
+
+  font-size: 15px;
+  font-weight: 800;
+
+  cursor: pointer;
+
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.success-login-button:hover {
+  transform: translateY(-2px);
+
+  box-shadow:
+    0 12px 25px rgba(37, 99, 235, 0.22);
+}
+
+/* ============================================================
+   TABLET
+============================================================ */
+
+@media (max-width: 700px) {
+  .employee-register-page {
+    padding: 20px 14px;
+  }
+
+  .employee-register-card {
+    padding: 38px 25px;
+    border-radius: 22px;
+  }
+
+  .register-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .employee-register-header h1 {
+    font-size: 26px;
+  }
+}
+
+/* ============================================================
+   MOBILE
+============================================================ */
+
+@media (max-width: 480px) {
+  .employee-register-card {
+    padding: 35px 20px 28px;
+  }
+
+  .employee-register-header {
+    align-items: flex-start;
+    gap: 15px;
+  }
+
+  .employee-register-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 17px;
+    font-size: 24px;
+  }
+
+  .employee-register-header h1 {
+    font-size: 22px;
+  }
+
+  .employee-register-header p {
+    font-size: 13px;
+  }
+
+  .employee-register-footer {
+    flex-direction: column;
+  }
+
+  .employee-register-success-card {
+    margin: 20px auto;
+    padding: 38px 22px;
+  }
+
+  .employee-register-success-card h1 {
+    font-size: 25px;
+  }
+
+  .employee-id-card strong {
+    font-size: 27px;
+  }
+
+  .success-details div {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+  }
+}

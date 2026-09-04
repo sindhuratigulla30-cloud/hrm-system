@@ -9,64 +9,92 @@ const {
   deleteEmployee,
 } = require("../controllers/employeeController");
 
+const { protect } = require("../middleware/authMiddleware");
+
 const {
-  protect,
-  allowRoles,
-} = require("../middleware/authMiddleware");
+  requireAdmin,
+  requireEmployee,
+} = require("../middleware/roleMiddleware");
 
 const router = express.Router();
 
-// ==========================================
-// ADMIN ONLY EMPLOYEE MANAGEMENT
-// ==========================================
 
-// Create employee
+// ============================================================
+// ADMIN — CREATE EMPLOYEE
+// POST /api/employees
+// ============================================================
+
 router.post(
   "/",
   protect,
-  allowRoles("admin"),
+  requireAdmin,
   createEmployee
 );
 
-// Get all employees
+
+// ============================================================
+// ADMIN — GET ALL EMPLOYEES
+// GET /api/employees
+// ============================================================
+
 router.get(
   "/",
   protect,
-  allowRoles("admin"),
+  requireAdmin,
   getEmployees
 );
 
-// Get currently logged-in employee
+
+// ============================================================
+// EMPLOYEE — GET OWN PROFILE
+// GET /api/employees/me
+// ============================================================
+
 router.get(
   "/me",
   protect,
-  allowRoles("employee"),
+  requireEmployee,
   getMyEmployee
 );
 
 
-// Get a specific employee
+// ============================================================
+// ADMIN — GET SINGLE EMPLOYEE
+// GET /api/employees/:id
+// ============================================================
+
 router.get(
   "/:id",
   protect,
-  allowRoles("admin"),
+  requireAdmin,
   getEmployee
 );
 
-// Update employee
+
+// ============================================================
+// ADMIN — UPDATE EMPLOYEE
+// PUT /api/employees/:id
+// ============================================================
+
 router.put(
   "/:id",
   protect,
-  allowRoles("admin"),
+  requireAdmin,
   updateEmployee
 );
 
-// Delete employee
+
+// ============================================================
+// ADMIN — DELETE EMPLOYEE
+// DELETE /api/employees/:id
+// ============================================================
+
 router.delete(
   "/:id",
   protect,
-  allowRoles("admin"),
+  requireAdmin,
   deleteEmployee
 );
+
 
 module.exports = router;

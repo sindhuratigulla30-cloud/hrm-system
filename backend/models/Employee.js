@@ -2,12 +2,20 @@ const mongoose = require("mongoose");
 
 const employeeSchema = new mongoose.Schema(
   {
+    // ============================================================
+    // EMPLOYEE ID
+    // ============================================================
+
     employeeId: {
       type: String,
       required: true,
       unique: true,
       trim: true,
     },
+
+    // ============================================================
+    // PERSONAL INFORMATION
+    // ============================================================
 
     firstName: {
       type: String,
@@ -29,39 +37,67 @@ const employeeSchema = new mongoose.Schema(
       lowercase: true,
     },
 
-    password: {
+    phone: {
       type: String,
-      required: true,
+      trim: true,
+      default: "",
     },
+
+    address: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+
+    // ============================================================
+    // JOB INFORMATION
+    // ============================================================
 
     department: {
       type: String,
-      default: "",
       trim: true,
+      default: "",
     },
 
     position: {
       type: String,
-      default: "",
       trim: true,
+      default: "",
     },
 
-    phone: {
-      type: String,
-      default: "",
-      trim: true,
+    joiningDate: {
+      type: Date,
+      default: Date.now,
     },
 
     salary: {
       type: Number,
       default: 0,
+      min: 0,
     },
+
+    // ============================================================
+    // LOGIN
+    // ============================================================
+
+    password: {
+      type: String,
+      required: true,
+    },
+
+    // ============================================================
+    // ACCOUNT STATUS
+    // ============================================================
 
     status: {
       type: String,
       enum: ["active", "inactive"],
       default: "active",
     },
+
+    // ============================================================
+    // ROLE
+    // ============================================================
 
     role: {
       type: String,

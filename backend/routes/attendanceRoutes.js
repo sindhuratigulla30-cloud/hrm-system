@@ -1,82 +1,22 @@
 const express = require("express");
 
-const attendanceController = require("../controllers/attendanceController");
-const authMiddleware = require("../middleware/authMiddleware");
+const {
+  getAttendance,
+  createAttendance,
+  deleteAttendance,
+} = require("../controllers/attendanceController");
+
+const { protect } = require("../middleware/authMiddleware");
+
+const {
+  requireAdmin,
+  requireEmployee,
+} = require("../middleware/roleMiddleware");
 
 const router = express.Router();
 
 // ============================================================
-// GET MIDDLEWARE
-// ============================================================
-
-const {
-  protect,
-  requireAdmin,
-  requireEmployee,
-} = authMiddleware;
-
-// ============================================================
-// GET ATTENDANCE CONTROLLERS
-// ============================================================
-
-const {
-  checkIn,
-  checkOut,
-  getTodayAttendance,
-  getMyAttendance,
-  getAllAttendance,
-} = attendanceController;
-
-// ============================================================
-// EMPLOYEE CLOCK IN
-// POST /api/attendance/check-in
-// ============================================================
-
-router.post(
-  "/check-in",
-  protect,
-  requireEmployee,
-  checkIn
-);
-
-// ============================================================
-// EMPLOYEE CLOCK OUT
-// POST /api/attendance/check-out
-// ============================================================
-
-router.post(
-  "/check-out",
-  protect,
-  requireEmployee,
-  checkOut
-);
-
-// ============================================================
-// EMPLOYEE TODAY ATTENDANCE
-// GET /api/attendance/today
-// ============================================================
-
-router.get(
-  "/today",
-  protect,
-  requireEmployee,
-  getTodayAttendance
-);
-
-// ============================================================
-// EMPLOYEE ATTENDANCE HISTORY
-// GET /api/attendance/my
-// ============================================================
-
-router.get(
-  "/my",
-  protect,
-  requireEmployee,
-  getMyAttendance
-);
-
-// ============================================================
-// ADMIN - ALL ATTENDANCE
+// ADMIN / HR — GET ALL ATTENDANCE
 // GET /api/attendance
 // ============================================================
 
@@ -84,11 +24,31 @@ router.get(
   "/",
   protect,
   requireAdmin,
-  getAllAttendance
+  getAttendance
 );
 
 // ============================================================
-// EXPORT ROUTER
+// ADMIN / HR — CREATE ATTENDANCE
+// POST /api/attendance
 // ============================================================
+
+router.post(
+  "/",
+  protect,
+  requireAdmin,
+  createAttendance
+);
+
+// ============================================================
+// ADMIN / HR — DELETE ATTENDANCE
+// DELETE /api/attendance/:id
+// ============================================================
+
+router.delete(
+  "/:id",
+  protect,
+  requireAdmin,
+  deleteAttendance
+);
 
 module.exports = router;

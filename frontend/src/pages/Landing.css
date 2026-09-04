@@ -1,0 +1,465 @@
+/* ============================================================
+   LANDING PAGE STYLES
+============================================================ */
+
+.landing-page {
+  min-height: 100vh;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  background: linear-gradient(135deg, #f8fafc 0%, #eef2ff 50%, #f8fafc 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+/* ============================================================
+   BACKGROUND GRADIENTS
+============================================================ */
+
+.landing-background {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.gradient-circle {
+  position: absolute;
+  border-radius: 50%;
+  opacity: 0.1;
+}
+
+.gradient-1 {
+  width: 400px;
+  height: 400px;
+  background: radial-gradient(circle, #2563eb, transparent);
+  top: -100px;
+  left: -100px;
+}
+
+.gradient-2 {
+  width: 300px;
+  height: 300px;
+  background: radial-gradient(circle, #6366f1, transparent);
+  top: 50%;
+  right: -50px;
+}
+
+.gradient-3 {
+  width: 250px;
+  height: 250px;
+  background: radial-gradient(circle, #8b5cf6, transparent);
+  bottom: -75px;
+  left: 10%;
+}
+
+/* ============================================================
+   MAIN CONTAINER
+============================================================ */
+
+.landing-container {
+  width: 100%;
+  max-width: 1200px;
+  z-index: 10;
+  position: relative;
+}
+
+/* ============================================================
+   HEADER SECTION
+============================================================ */
+
+.landing-header {
+  text-align: center;
+  margin-bottom: 60px;
+  animation: slideDown 0.6s ease-out;
+}
+
+.logo-icon {
+  width: 80px;
+  height: 80px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, #2563eb, #1e40af);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 40px;
+  margin: 0 auto 20px;
+  box-shadow: 0 8px 20px rgba(37, 99, 235, 0.2);
+}
+
+.landing-header h1 {
+  font-size: 42px;
+  color: #071a3d;
+  margin: 0 0 10px;
+  font-weight: 900;
+  letter-spacing: -1px;
+}
+
+.landing-header .subtitle {
+  font-size: 18px;
+  color: #64748b;
+  margin: 0;
+  font-weight: 500;
+}
+
+/* ============================================================
+   CONTENT SECTION
+============================================================ */
+
+.landing-content {
+  margin-bottom: 60px;
+}
+
+.landing-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 30px;
+  margin-bottom: 50px;
+}
+
+/* ============================================================
+   CARD STYLES
+============================================================ */
+
+.landing-card {
+  background: white;
+  border-radius: 20px;
+  padding: 40px 30px;
+  box-shadow: 0 8px 25px rgba(15, 23, 42, 0.06);
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  text-align: center;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.landing-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #2563eb, #8b5cf6);
+  transform: scaleX(0);
+  transition: transform 0.3s ease;
+}
+
+.landing-card:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 20px 40px rgba(15, 23, 42, 0.12);
+  border-color: rgba(37, 99, 235, 0.2);
+}
+
+.landing-card:hover::before {
+  transform: scaleX(1);
+}
+
+.card-icon {
+  width: 70px;
+  height: 70px;
+  border-radius: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32px;
+  margin: 0 auto 20px;
+  transition: transform 0.3s ease;
+}
+
+.landing-card:hover .card-icon {
+  transform: scale(1.1) rotate(5deg);
+}
+
+.employee-icon {
+  background: linear-gradient(135deg, #eaf2ff, #dbeafe);
+  color: #2563eb;
+}
+
+.admin-icon {
+  background: linear-gradient(135deg, #fef3c7, #fde68a);
+  color: #d97706;
+}
+
+.landing-card h2 {
+  font-size: 24px;
+  color: #071a3d;
+  margin: 0 0 15px;
+  font-weight: 700;
+}
+
+.landing-card p {
+  font-size: 15px;
+  color: #64748b;
+  margin: 0 0 25px;
+  line-height: 1.6;
+}
+
+/* ============================================================
+   BUTTON STYLES
+============================================================ */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 28px;
+  border: none;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #2563eb, #1e40af);
+  color: white;
+  box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3);
+}
+
+.btn-primary:hover {
+  background: linear-gradient(135deg, #1e40af, #1e3a8a);
+  box-shadow: 0 8px 20px rgba(37, 99, 235, 0.4);
+  transform: translateY(-2px);
+}
+
+.btn-secondary {
+  background: linear-gradient(135deg, #6366f1, #4f46e5);
+  color: white;
+  box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
+}
+
+.btn-secondary:hover {
+  background: linear-gradient(135deg, #4f46e5, #4338ca);
+  box-shadow: 0 8px 20px rgba(99, 102, 241, 0.4);
+  transform: translateY(-2px);
+}
+
+.btn-admin {
+  background: linear-gradient(135deg, #d97706, #b45309);
+  color: white;
+  box-shadow: 0 4px 15px rgba(217, 119, 6, 0.3);
+}
+
+.btn-admin:hover {
+  background: linear-gradient(135deg, #b45309, #92400e);
+  box-shadow: 0 8px 20px rgba(217, 119, 6, 0.4);
+  transform: translateY(-2px);
+}
+
+/* ============================================================
+   FEATURES SECTION
+============================================================ */
+
+.landing-features {
+  background: white;
+  border-radius: 20px;
+  padding: 50px 40px;
+  box-shadow: 0 8px 25px rgba(15, 23, 42, 0.06);
+  margin-bottom: 40px;
+  border: 1px solid rgba(226, 232, 240, 0.8);
+}
+
+.landing-features h3 {
+  font-size: 28px;
+  color: #071a3d;
+  margin: 0 0 35px;
+  text-align: center;
+  font-weight: 800;
+}
+
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 25px;
+}
+
+.feature {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 20px;
+  background: linear-gradient(135deg, #f0f9ff, #f8fafc);
+  border-radius: 12px;
+  border: 1px solid rgba(226, 232, 240, 0.5);
+  transition: all 0.3s ease;
+}
+
+.feature:hover {
+  transform: translateX(5px);
+  background: linear-gradient(135deg, #e0f2fe, #f0f9ff);
+  border-color: rgba(37, 99, 235, 0.2);
+}
+
+.feature-icon {
+  width: 35px;
+  height: 35px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #2563eb, #1e40af);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.feature p {
+  font-size: 15px;
+  color: #475569;
+  margin: 0;
+  font-weight: 600;
+}
+
+/* ============================================================
+   FOOTER SECTION
+============================================================ */
+
+.landing-footer {
+  text-align: center;
+  padding-top: 30px;
+  border-top: 1px solid rgba(226, 232, 240, 0.5);
+}
+
+.landing-footer p {
+  font-size: 14px;
+  color: #94a3b8;
+  margin: 0;
+}
+
+/* ============================================================
+   ANIMATIONS
+============================================================ */
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.landing-card {
+  animation: fadeIn 0.6s ease-out;
+  animation-fill-mode: both;
+}
+
+.landing-card:nth-child(1) {
+  animation-delay: 0.1s;
+}
+
+.landing-card:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.landing-card:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+/* ============================================================
+   RESPONSIVE DESIGN
+============================================================ */
+
+@media (max-width: 768px) {
+  .landing-page {
+    padding: 20px;
+  }
+
+  .landing-header h1 {
+    font-size: 32px;
+  }
+
+  .landing-header .subtitle {
+    font-size: 16px;
+  }
+
+  .landing-grid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+
+  .landing-card {
+    padding: 30px 25px;
+  }
+
+  .landing-features {
+    padding: 35px 25px;
+  }
+
+  .features-grid {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 15px;
+  }
+
+  .gradient-1 {
+    width: 300px;
+    height: 300px;
+    top: -50px;
+    left: -50px;
+  }
+
+  .gradient-2 {
+    width: 200px;
+    height: 200px;
+  }
+
+  .gradient-3 {
+    width: 150px;
+    height: 150px;
+  }
+}
+
+@media (max-width: 480px) {
+  .landing-header h1 {
+    font-size: 24px;
+  }
+
+  .landing-header .subtitle {
+    font-size: 14px;
+  }
+
+  .logo-icon {
+    width: 60px;
+    height: 60px;
+    font-size: 28px;
+  }
+
+  .btn {
+    padding: 12px 20px;
+    font-size: 14px;
+  }
+
+  .landing-card h2 {
+    font-size: 20px;
+  }
+
+  .landing-card p {
+    font-size: 13px;
+  }
+
+  .landing-features h3 {
+    font-size: 22px;
+  }
+}

@@ -5,6 +5,7 @@ import {
   FaEyeSlash,
   FaArrowLeft,
   FaSignInAlt,
+  FaUserPlus,
 } from "react-icons/fa";
 import axios from "axios";
 
@@ -14,21 +15,16 @@ function Login({
   apiUrl,
   onLoginSuccess,
   onBack,
+  onRegister,
 }) {
   const [form, setForm] = useState({
-    employeeId: "",
     email: "",
     password: "",
   });
 
-  const [showPassword, setShowPassword] =
-    useState(false);
-
-  const [loading, setLoading] =
-    useState(false);
-
-  const [error, setError] =
-    useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -44,15 +40,8 @@ function Login({
   const handleSubmit = async (event) => {
     event.preventDefault();
 
-    if (
-      !form.employeeId.trim() ||
-      !form.email.trim() ||
-      !form.password
-    ) {
-      setError(
-        "Employee ID, email and password are required."
-      );
-
+    if (!form.email.trim() || !form.password) {
+      setError("Email and password are required.");
       return;
     }
 
@@ -60,81 +49,47 @@ function Login({
     setError("");
 
     try {
-      console.log(
-        "Employee login request:",
+        const response = await axios.post(
+  `${apiUrl}/api/auth/login`,
         {
-          employeeId: form.employeeId,
-          email: form.email,
+          email: form.email.trim().toLowerCase(),
+          password: form.password,
         }
       );
 
-      const response = await axios.post(
-        `${apiUrl}/api/auth/employee-login`,
-        {
-          employeeId:
-            form.employeeId.trim(),
+      console.log("LOGIN RESPONSE:", response.data);
 
-          email:
-            form.email
-              .trim()
-              .toLowerCase(),
+      const token = response.data?.token;
+      const user = response.data?.user;
 
-          password:
-            form.password,
-        }
-      );
-
-      console.log(
-        "Employee login response:",
-        response.data
-      );
-
-      const token =
-        response.data?.token ||
-        response.data?.data?.token;
-
-      const user =
-        response.data?.user ||
-        response.data?.employee ||
-        response.data?.data?.user ||
-        response.data?.data?.employee ||
-        null;
-
-      if (!token) {
+      if (!token || !user) {
         throw new Error(
-          "Authentication token was not received."
+          "Login response is missing authentication information."
         );
       }
 
       /*
-       * Send the successful login
-       * back to App.jsx.
-       *
-       * App.jsx will then call:
-       *
-       * GET /api/employees/me
-       *
-       * to load ONLY this employee.
+       * Store authentication information.
        */
+      localStorage.setItem("token", token);
+      localStorage.setItem("user", JSON.stringify(user));
 
-      onLoginSuccess(
-        token,
-        user
-      );
+      /*
+       * IMPORTANT:
+       *
+       * Backend automatically identifies whether
+       * the account is admin or employee.
+       *
+       * App.jsx decides which dashboard to display.
+       */
+      onLoginSuccess(token, user);
     } catch (error) {
-      console.error(
-        "EMPLOYEE LOGIN ERROR:",
-        error
-      );
-
-      console.error(
-        "Server response:",
-        error.response?.data
-      );
+      console.error("LOGIN ERROR:", error);
+      console.error("SERVER RESPONSE:", error.response?.data);
 
       setError(
         error.response?.data?.message ||
-          "Employee login failed. Please check your Employee ID, email and password."
+          "Login failed. Please check your email and password."
       );
     } finally {
       setLoading(false);
@@ -143,7 +98,6 @@ function Login({
 
   return (
     <div className="employee-login-page">
-
       <div className="employee-login-card">
 
         {/* TOP GRADIENT LINE */}
@@ -155,12 +109,10 @@ function Login({
         </div>
 
         {/* TITLE */}
-        <h1>
-          Employee Login
-        </h1>
+        <h1>Employee Login</h1>
 
         <p className="employee-login-subtitle">
-          Sign in to access your employee portal.
+          Sign in to access your personal employee portal.
         </p>
 
         {/* FORM */}
@@ -169,31 +121,10 @@ function Login({
           className="employee-login-form"
         >
 
-          {/* EMPLOYEE ID */}
-          <div className="employee-login-field">
-
-            <label htmlFor="employeeId">
-              Employee ID
-            </label>
-
-            <input
-              id="employeeId"
-              type="text"
-              name="employeeId"
-              value={form.employeeId}
-              onChange={handleChange}
-              placeholder="EMP002"
-              autoComplete="username"
-              required
-            />
-
-          </div>
-
           {/* EMAIL */}
           <div className="employee-login-field">
-
             <label htmlFor="employeeEmail">
-              Email
+              Email Address
             </label>
 
             <input
@@ -206,25 +137,18 @@ function Login({
               autoComplete="email"
               required
             />
-
           </div>
 
           {/* PASSWORD */}
           <div className="employee-login-field">
-
             <label htmlFor="employeePassword">
               Password
             </label>
 
             <div className="employee-password-wrapper">
-
               <input
                 id="employeePassword"
-                type={
-                  showPassword
-                    ? "text"
-                    : "password"
-                }
+                type={showPassword ? "text" : "password"}
                 name="password"
                 value={form.password}
                 onChange={handleChange}
@@ -238,8 +162,7 @@ function Login({
                 className="employee-password-toggle"
                 onClick={() =>
                   setShowPassword(
-                    (previous) =>
-                      !previous
+                    (previous) => !previous
                   )
                 }
                 aria-label={
@@ -254,9 +177,7 @@ function Login({
                   <FaEye />
                 )}
               </button>
-
             </div>
-
           </div>
 
           {/* ERROR */}
@@ -272,17 +193,14 @@ function Login({
             className="employee-login-button"
             disabled={loading}
           >
-
             <FaSignInAlt />
 
             <span>
               {loading
                 ? "Signing in..."
-                : "Login as Employee"}
+                : "Login"}
             </span>
-
           </button>
-
         </form>
 
         {/* DIVIDER */}
@@ -292,9 +210,27 @@ function Login({
           <span />
         </div>
 
+        {/* REGISTER */}
+        <div className="employee-register-section">
+          <p>
+            Don't have an employee account?
+          </p>
+
+          <button
+            type="button"
+            className="employee-register-button"
+            onClick={onRegister}
+          >
+            <FaUserPlus />
+
+            <span>
+              Create Employee Account
+            </span>
+          </button>
+        </div>
+
         {/* BACK TO ADMIN */}
         <div className="employee-back-section">
-
           <p>
             Are you an administrator?
           </p>
@@ -310,21 +246,19 @@ function Login({
               Back to Administrator Login
             </span>
           </button>
-
         </div>
 
-        {/* SECURITY MESSAGE */}
+        {/* SECURITY NOTE */}
         <div className="employee-security-note">
           <FaUserTie />
 
           <span>
-            Employee access is restricted to
-            your own profile and attendance.
+            Your account provides access only to
+            your personal profile and attendance.
           </span>
         </div>
 
       </div>
-
     </div>
   );
 }
