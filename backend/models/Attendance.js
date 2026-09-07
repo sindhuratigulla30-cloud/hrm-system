@@ -11,16 +11,19 @@ const attendanceSchema = new mongoose.Schema(
     employeeId: {
       type: String,
       required: true,
+      trim: true,
     },
 
     employeeName: {
       type: String,
       required: true,
+      trim: true,
     },
 
     date: {
       type: String,
       required: true,
+      trim: true,
     },
 
     status: {
@@ -32,16 +35,19 @@ const attendanceSchema = new mongoose.Schema(
     checkIn: {
       type: String,
       default: "-",
+      trim: true,
     },
 
     checkOut: {
       type: String,
       default: "-",
+      trim: true,
     },
 
     workingHours: {
       type: String,
       default: "0h 0m",
+      trim: true,
     },
   },
   {
@@ -49,6 +55,9 @@ const attendanceSchema = new mongoose.Schema(
   }
 );
 
+/*
+  One attendance record per employee per day.
+*/
 attendanceSchema.index(
   { employee: 1, date: 1 },
   { unique: true }
